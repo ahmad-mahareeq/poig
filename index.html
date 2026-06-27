@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POIG — Palestinian Ophthalmology Interest Group</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body id="top">
+
+  <!-- Particles Background -->
+  <div class="particles">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#top" class="logo-link">
+        <div class="logo-container">
+          <img src="logo.png" alt="POIG">
+          <!--<span class="logo-text">POIG</span>-->
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#services">What We Do</a></li>
+        <li><a href="#team">Team</a></li>
+        <li><a href="#activities">Activities</a></li>
+        <li><a href="#events">Events</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="nav-toggle" id="navToggle">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-text">
+        
+        <!--<span class="hero-badge">Ophthalmology Initiative</span>-->
+        <h1 id="heroTitle"></h1>
+        <p id="heroSubtitle"></p>
+        <div class="hero-actions">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSf9drD7-JceoGbL4_K37pkbSeUa1gfrEMFWqD17afhvu1m6dw/viewform" target="_blank" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Join Our Team
+          </a>
+          <a href="#about" class="btn btn-outline">
+            <i class="fas fa-arrow-down"></i> Learn More
+          </a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-glow"></div>
+        <img src="logo.png" alt="POIG Logo" class="hero-logo">
+      </div>
+    </div>
+    <div class="scroll-indicator">
+      <span>Scroll</span>
+      <i class="fas fa-chevron-down"></i>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="stats-bar" id="statsBar"></section>
+
+  <!-- About -->
+  <section id="about" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle" id="aboutSubtitle">Who We Are</span>
+        <h2 class="section-title" id="aboutTitle">About <span class="gradient-text">POIG</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="about-grid">
+        <div class="glass-card about-main">
+          <div class="card-icon"><i class="fas fa-eye"></i></div>
+          <p id="aboutDescription">POIG is a Palestinian ophthalmology initiative dedicated to advancing clinical research, medical education, and eye-health awareness.</p>
+          <p>We create a structured platform that connects <strong>ophthalmologists</strong>, <strong>researchers</strong>, and <strong>students</strong> to collaborate, learn, and contribute meaningfully to the field.</p>
+        </div>
+        <div class="glass-card vision-card">
+          <div class="card-icon"><i class="fas fa-bullseye"></i></div>
+          <h3>Our Vision</h3>
+          <p>To build a simple, practical, and sustainable model for clinician-student collaboration in ophthalmology in Palestine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What We Do -->
+  <section id="services" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Our Focus</span>
+        <h2 class="section-title">What <span class="gradient-text">We Do</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="services-grid">
+        <div class="glass-card service-card">
+          <div class="service-icon"><i class="fas fa-flask"></i></div>
+          <h3>Clinical Research</h3>
+          <p>Facilitate clinical research projects and academic publications in collaboration with ophthalmologists.</p>
+        </div>
+        <div class="glass-card service-card">
+          <div class="service-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+          <h3>Medical Education</h3>
+          <p>Organize structured case discussions and medical education sessions for students and professionals.</p>
+        </div>
+        <div class="glass-card service-card">
+          <div class="service-icon"><i class="fas fa-graduation-cap"></i></div>
+          <h3>Research Training</h3>
+          <p>Provide supervised research training for students to develop academic and clinical skills.</p>
+        </div>
+        <div class="glass-card service-card">
+          <div class="service-icon"><i class="fas fa-heartbeat"></i></div>
+          <h3>Awareness Initiatives</h3>
+          <p>Lead awareness initiatives on preventable and inherited eye diseases across Palestine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Team -->
+  <section id="team" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Our People</span>
+        <h2 class="section-title">The <span class="gradient-text">Team</span></h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div id="coreTeamContainer" class="team-category">
+        <h3 class="team-category-title"><span class="gradient-text">Core</span> Team</h3>
+        <div class="team-grid" id="coreTeamGrid"></div>
+      </div>
+
+      <div id="activeTeamContainer" class="team-category">
+        <h3 class="team-category-title"><span class="gradient-text">Active</span> Team</h3>
+        <div class="team-grid active-team-grid" id="activeTeamGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Activities -->
+  <section id="activities" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Our Impact</span>
+        <h2 class="section-title">Our <span class="gradient-text">Activities</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="activities-grid" id="activitiesGrid"></div>
+    </div>
+  </section>
+
+  <!-- Events -->
+  <section id="events" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Join Us</span>
+        <h2 class="section-title">Upcoming <span class="gradient-text">Events</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="events-grid" id="eventsGrid"></div>
+    </div>
+  </section>
+
+  <!-- News -->
+  <section id="news" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Updates</span>
+        <h2 class="section-title">Latest <span class="gradient-text">News</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="news-carousel">
+        <button class="carousel-arrow carousel-arrow-left" onclick="if(window.prevSlide){prevSlide();resetTimer()}"><i class="fas fa-chevron-left"></i></button>
+        <div class="news-track" id="newsGrid"></div>
+        <button class="carousel-arrow carousel-arrow-right" onclick="if(window.nextSlide){nextSlide();resetTimer()}"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div class="carousel-dots" id="newsDots"></div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Get In Touch</span>
+        <h2 class="section-title">Connect <span class="gradient-text">With Us</span></h2>
+        <div class="section-line"></div>
+      </div>
+      <div class="contact-content">
+        <div class="glass-card contact-card">
+          <h3><i class="fas fa-share-alt"></i> Follow Us</h3>
+          <div class="social-links" id="socialLinks">
+            <a href="https://www.instagram.com/poig.ps" target="_blank" class="social-link">
+              <i class="fab fa-instagram"></i> Instagram
+            </a>
+            <a href="https://www.facebook.com/people/Palestinian-Ophthalmology-Interest-Group-POIG/61588352620304/" target="_blank" class="social-link">
+              <i class="fab fa-facebook-f"></i> Facebook
+            </a>
+            <a href="https://www.linkedin.com/company/palestinian-oig/" target="_blank" class="social-link">
+              <i class="fab fa-linkedin-in"></i> LinkedIn
+            </a>
+            <a href="https://chat.whatsapp.com/Lqb2zIHzDwMFWjWlgqXZn9" target="_blank" class="social-link">
+              <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
+          </div>
+        </div>
+        <div class="glass-card contact-card">
+          <h3><i class="fas fa-link"></i> Quick Links</h3>
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSf9drD7-JceoGbL4_K37pkbSeUa1gfrEMFWqD17afhvu1m6dw/viewform" target="_blank" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Apply to Join
+          </a>
+          <a href="mailto:palestinian.oig@gmail.com" class="contact-email" id="contactEmail">
+            <i class="fas fa-envelope"></i> palestinian.oig@gmail.com
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <img src="logo.png" alt="POIG">
+        <span>Palestinian Ophthalmology Interest Group</span>
+      </div>
+      <div class="footer-right">
+        <p id="footerText">&copy; 2026 POIG. All rights reserved.</p>
+        <a href="admin.html" class="btn-admin-login"><i class="fas fa-lock"></i> Admin Log In</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

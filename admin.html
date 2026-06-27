@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POIG Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <style>
+    :root {
+      --purple: #421B61;
+      --purple-dark: #2f1245;
+      --purple-light: #6a2ba8;
+      --orange: #FE6F03;
+      --orange-light: #ff9a44;
+      --orange-dark: #d55a00;
+      --glass-bg: rgba(255, 255, 255, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+      --glass-hover-shadow: 0 20px 50px rgba(66, 27, 97, 0.15);
+      --radius: 24px;
+      --radius-sm: 16px;
+      --transition: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f7fc;
+      color: #1a1a2e;
+      overflow-x: hidden;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      z-index: -2;
+      filter: blur(140px);
+      pointer-events: none;
+      background: rgba(66, 27, 97, 0.12);
+      top: -200px;
+      left: -150px;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      z-index: -2;
+      filter: blur(140px);
+      pointer-events: none;
+      background: rgba(254, 111, 3, 0.12);
+      bottom: -200px;
+      right: -150px;
+    }
+
+    /* Particles */
+    .particles {
+      position: fixed; inset: 0; overflow: hidden; z-index: -1; pointer-events: none;
+    }
+    .particles span {
+      position: absolute; width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(66, 27, 97, 0.08); animation: float 25s linear infinite; bottom: -100px;
+    }
+    .particles span:nth-child(1) { left: 5%; width: 30px; height: 30px; animation-duration: 22s; }
+    .particles span:nth-child(2) { left: 15%; width: 15px; height: 15px; animation-duration: 28s; background: rgba(254, 111, 3, 0.1); }
+    .particles span:nth-child(3) { left: 25%; width: 40px; height: 40px; animation-duration: 18s; }
+    .particles span:nth-child(4) { left: 35%; width: 12px; height: 12px; animation-duration: 30s; background: rgba(254, 111, 3, 0.08); }
+    .particles span:nth-child(5) { left: 45%; width: 25px; height: 25px; animation-duration: 20s; }
+    .particles span:nth-child(6) { left: 55%; width: 18px; height: 18px; animation-duration: 26s; background: rgba(254, 111, 3, 0.12); }
+    .particles span:nth-child(7) { left: 65%; width: 35px; height: 35px; animation-duration: 24s; }
+    .particles span:nth-child(8) { left: 75%; width: 14px; height: 14px; animation-duration: 32s; background: rgba(254, 111, 3, 0.08); }
+    .particles span:nth-child(9) { left: 82%; width: 28px; height: 28px; animation-duration: 19s; }
+    .particles span:nth-child(10) { left: 90%; width: 16px; height: 16px; animation-duration: 27s; background: rgba(254, 111, 3, 0.1); }
+    .particles span:nth-child(11) { left: 50%; width: 22px; height: 22px; animation-duration: 23s; }
+    .particles span:nth-child(12) { left: 70%; width: 10px; height: 10px; animation-duration: 35s; background: rgba(254, 111, 3, 0.06); }
+    @keyframes float {
+      0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { transform: translateY(-110vh) rotate(720deg) scale(0.5); opacity: 0; }
+    }
+
+    /* Glass Card */
+    .glass-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.35));
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 40px;
+      box-shadow: var(--glass-shadow);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: 0.6s;
+      pointer-events: none;
+    }
+    .glass-card:hover::before { left: 100%; }
+    .glass-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(66, 27, 97, 0.08);
+      border-color: rgba(254, 111, 3, 0.15);
+    }
+    .glass-card p { color: #444; font-size: 0.95rem; line-height: 1.8; }
+    .gradient-text {
+      background: linear-gradient(135deg, var(--purple), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: var(--transition);
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+      color: white;
+      box-shadow: 0 8px 25px rgba(254, 111, 3, 0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(254, 111, 3, 0.35);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--purple);
+      border: 2px solid var(--purple);
+    }
+    .btn-outline:hover {
+      background: var(--purple);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(66, 27, 97, 0.2);
+    }
+    .btn-sm { padding: 10px 20px; font-size: 0.8rem; }
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #a71d2a);
+      color: white;
+      box-shadow: 0 8px 25px rgba(220, 53, 69, 0.25);
+    }
+    .btn-danger:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(220, 53, 69, 0.35);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #1e7e34);
+      color: white;
+      box-shadow: 0 8px 25px rgba(40, 167, 69, 0.25);
+    }
+    .btn-success:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(40, 167, 69, 0.35);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--purple), var(--purple-light));
+      color: white;
+      box-shadow: 0 8px 25px rgba(66, 27, 97, 0.25);
+    }
+    .btn-secondary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(66, 27, 97, 0.35);
+    }
+
+    /* Login Page */
+    .login-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+    }
+    .login-card .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-card .login-logo img {
+      height: 72px;
+      margin-bottom: 12px;
+    }
+    .login-card .login-logo h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--purple);
+    }
+    .login-card .login-logo p {
+      font-size: 0.85rem;
+      color: #777;
+      margin-top: 4px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--purple);
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 2px solid rgba(66, 27, 97, 0.12);
+      background: rgba(255,255,255,0.7);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      outline: none;
+      color: #1a1a2e;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 4px rgba(254, 111, 3, 0.1);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group input[type="file"] {
+      padding: 10px;
+      border-style: dashed;
+    }
+    .form-error {
+      color: #dc3545;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .login-btn {
+      width: 100%;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .return-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: var(--transition);
+    }
+    .return-link:hover { color: var(--orange); }
+    .return-link i { font-size: 0.8rem; }
+
+    /* Dashboard Layout */
+    .dashboard { display: none; }
+    .dashboard-header {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-bottom: 1px solid rgba(255,255,255,0.6);
+      padding: 16px 5%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.04);
+    }
+    .dashboard-header .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .dashboard-header .header-left img {
+      height: 36px;
+    }
+    .dashboard-header .header-left h2 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--purple);
+    }
+    .dashboard-header .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Tabs */
+    .dashboard-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 20px 5% 0;
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      padding: 12px 24px;
+      border-radius: 50px;
+      border: 2px solid rgba(66, 27, 97, 0.12);
+      background: rgba(255,255,255,0.5);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .tab-btn:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+      background: rgba(66, 27, 97, 0.04);
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--purple), var(--purple-light));
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 8px 25px rgba(66, 27, 97, 0.2);
+    }
+
+    /* Tab Content */
+    .dashboard-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 5% 60px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .tab-panel h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--purple);
+      margin-bottom: 24px;
+    }
+
+    /* Add Form */
+    .add-form {
+      margin-bottom: 32px;
+    }
+    .add-form .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .add-form .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+    .add-form .form-row-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 16px;
+    }
+    .add-form .form-full { grid-column: 1 / -1; }
+    .photo-previews {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .photo-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      width: 140px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 2px solid rgba(66, 27, 97, 0.1);
+    }
+    .photo-preview img {
+      width: 100%;
+      max-height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .photo-preview .remove-photo {
+      position: absolute;
+      top: 2px; right: 2px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(220,53,69,0.9);
+      color: white;
+      border: none;
+      font-size: 0.6rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Items List */
+    .items-list { display: flex; flex-direction: column; gap: 16px; }
+    .item-card {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 20px 24px;
+    }
+    .item-card .item-photo {
+      width: 80px;
+      height: 80px;
+      border-radius: 14px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid rgba(66, 27, 97, 0.08);
+    }
+    .item-card .item-info { flex: 1; min-width: 0; }
+    .item-card .item-info h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--purple);
+      margin-bottom: 4px;
+    }
+    .item-card .item-info p {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 2px;
+    }
+    .item-card .item-info .item-meta {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 4px;
+    }
+    .item-card .item-photos-sm {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .item-card .item-photos-sm img {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid rgba(66, 27, 97, 0.06);
+    }
+    .item-card .item-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      color: #ccc;
+      cursor: grab;
+      padding: 4px;
+      font-size: 0.9rem;
+      user-select: none;
+      align-self: stretch;
+    }
+    .drag-handle:hover { color: var(--purple); }
+    .item-card[draggable="true"] { cursor: grab; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+    .item-card.dragging { opacity: 0.3; transform: scale(0.96); box-shadow: 0 2px 12px rgba(254,111,3,0.3); }
+    .item-card.drag-over-top { border-top: 3px solid var(--orange) !important; }
+    .item-card.drag-over-bottom { border-bottom: 3px solid var(--orange) !important; }
+    .item-card.sorting { transition: transform 0.2s ease; }
+    .drop-indicator {
+      height: 3px;
+      background: var(--orange);
+      border-radius: 2px;
+      margin: -1px 0;
+      pointer-events: none;
+      transition: opacity 0.1s ease;
+    }
+
+    /* Crop Modal */
+    .crop-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    .crop-modal.active { display: flex; }
+    .crop-modal-content {
+      background: white;
+      border-radius: 16px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .crop-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(66,27,97,0.08);
+    }
+    .crop-close {
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      color: #999;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .crop-close:hover { color: var(--purple); }
+    .crop-container {
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0f0f0;
+      min-height: 300px;
+      user-select: none;
+    }
+    .crop-container img {
+      max-width: 100%;
+      max-height: 65vh;
+      display: block;
+    }
+    .crop-box {
+      position: absolute;
+      border: 2px solid var(--purple);
+      cursor: move;
+      background: rgba(66,27,97,0.08);
+    }
+    .crop-handle {
+      position: absolute;
+      width: 14px; height: 14px;
+      background: white;
+      border: 2px solid var(--purple);
+      border-radius: 3px;
+    }
+    .crop-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
+    .crop-handle.ne { top: -7px; right: -7px; cursor: ne-resize; }
+    .crop-handle.sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+    .crop-handle.se { bottom: -7px; right: -7px; cursor: se-resize; }
+    .crop-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid rgba(66,27,97,0.08);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #999;
+    }
+    .empty-state i {
+      font-size: 2.4rem;
+      margin-bottom: 12px;
+      color: rgba(66, 27, 97, 0.15);
+    }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 16px 24px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--purple);
+      display: none;
+      z-index: 999;
+      animation: slideUp 0.4s ease;
+    }
+    .toast.show { display: flex; align-items: center; gap: 10px; }
+    .toast i { font-size: 1.1rem; }
+    .toast.success i { color: #28a745; }
+    .toast.error i { color: #dc3545; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-tabs { gap: 6px; }
+      .tab-btn { padding: 10px 18px; font-size: 0.78rem; }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-header { flex-direction: column; align-items: flex-start; }
+      .dashboard-header .header-left h2 { font-size: 1rem; }
+      .dashboard-header .header-actions { width: 100%; flex-wrap: wrap; }
+      .dashboard-header .header-actions .btn { flex: 1; min-width: 0; justify-content: center; font-size: 0.75rem; padding: 8px 12px; }
+      .dashboard-tabs { gap: 4px; padding: 16px 4% 0; }
+      .tab-btn { padding: 8px 14px; font-size: 0.75rem; }
+      .add-form .form-row,
+      .add-form .form-row-3,
+      .add-form .form-row-4 { grid-template-columns: 1fr; }
+      .item-card { flex-direction: column; align-items: stretch; padding: 16px; }
+      .item-card .item-actions { align-self: flex-end; }
+      .item-card .item-photo { width: 60px; height: 60px; }
+      .photo-preview { width: 110px; }
+      .dashboard-content { padding: 16px 4% 40px; }
+      .login-card { padding: 0 10px; }
+      .toast { right: 16px; left: 16px; bottom: 20px; justify-content: center; font-size: 0.85rem; }
+    }
+
+    @media (max-width: 480px) {
+      .dashboard-header .header-left { gap: 10px; }
+      .dashboard-header .header-left img { height: 28px; }
+      .dashboard-header .header-left h2 { font-size: 0.9rem; }
+      .dashboard-header .header-actions .btn { font-size: 0.7rem; padding: 6px 10px; }
+      .dashboard-tabs { gap: 4px; padding: 12px 3% 0; }
+      .tab-btn { padding: 6px 10px; font-size: 0.7rem; border-radius: 30px; }
+      .add-form { padding: 16px; }
+      .add-form .form-group { margin-bottom: 14px; }
+      .add-form .form-group input,
+      .add-form .form-group textarea { padding: 10px 14px; font-size: 0.85rem; }
+      .item-card { padding: 12px; gap: 12px; }
+      .item-card .item-info h4 { font-size: 0.95rem; }
+      .item-card .item-info p { font-size: 0.8rem; }
+      .item-card .item-photo { width: 48px; height: 48px; }
+      .item-card .item-actions .btn { font-size: 0.7rem; padding: 6px 10px; }
+      .photo-preview { width: 90px; padding: 4px; }
+      .photo-preview img { max-height: 60px; }
+      .btn-download, .btn-crop { font-size: 0.65rem; padding: 3px 8px; }
+      .login-page { padding: 12px; }
+      .login-card .login-logo img { height: 56px; }
+      .login-card .login-logo h1 { font-size: 1.3rem; }
+      .tab-panel h2 { font-size: 1.2rem; }
+      .dashboard-content { padding: 12px 3% 30px; }
+      .toast { padding: 12px 16px; font-size: 0.8rem; bottom: 12px; }
+      .empty-state { padding: 32px 16px; }
+      .empty-state i { font-size: 1.8rem; }
+    }
+    .btn-download, .btn-crop {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 8px; font-size: 0.75rem;
+      color: #fff; text-decoration: none;
+      cursor: pointer; transition: var(--transition); border: none;
+    }
+    .btn-download { background: var(--purple); }
+    .btn-download:hover { background: var(--purple-light); }
+    .btn-crop { background: var(--orange); }
+    .btn-crop:hover { background: #e06400; }
+    .photo-preview .btn-download { margin-top: 4px; }
+    .edit-form-fields { width: 100%; }
+    .edit-form-fields .form-group { margin-bottom: 8px; }
+    .edit-form-fields .form-group label { font-size: 0.75rem; font-weight: 600; color: var(--purple); display: block; margin-bottom: 3px; }
+    .edit-input {
+      width: 100%; padding: 8px 12px; border: 2px solid rgba(66,27,97,0.15); border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; background: white; transition: var(--transition);
+      outline: none;
+    }
+    .edit-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(66,27,97,0.1); }
+    textarea.edit-input { resize: vertical; min-height: 60px; }
+    .edit-form-fields input[type="file"] {
+      font-size: 0.75rem; padding: 4px 0; margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="particles">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+
+  <!-- Login -->
+  <div class="login-page" id="loginPage">
+    <div class="glass-card login-card">
+      <div class="login-logo">
+        <img src="logo.png" alt="POIG" onerror="this.style.display='none'">
+        <h1>Admin Dashboard</h1>
+        <p>Palestinian Ophthalmology Interest Group</p>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-envelope"></i> Email</label>
+        <input type="email" id="loginEmail" placeholder="admin@poig.org" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-lock"></i> Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="form-error" id="loginError"></div>
+      <button class="btn btn-primary login-btn" onclick="handleLogin()">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      <div style="text-align:center;margin-top:16px">
+        <a href="index.html" class="return-link"><i class="fas fa-arrow-left"></i> Return to Website</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div class="header-left">
+        <img src="logo.png" alt="POIG" onerror="this.style.display='none'">
+        <h2>Admin Dashboard</h2>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-success btn-sm" onclick="saveAll()"><i class="fas fa-save"></i> Save Changes</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelAll()"><i class="fas fa-undo"></i> Cancel</button>
+        <a href="index.html" class="btn btn-secondary btn-sm"><i class="fas fa-external-link-alt"></i> Return to Website</a>
+        <button class="btn btn-secondary btn-sm" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="dashboard-tabs">
+      <button class="tab-btn active" data-tab="team" onclick="switchTab('team')"><i class="fas fa-users"></i> Team Members</button>
+      <button class="tab-btn" data-tab="activities" onclick="switchTab('activities')"><i class="fas fa-calendar-check"></i> Activities</button>
+      <button class="tab-btn" data-tab="events" onclick="switchTab('events')"><i class="fas fa-calendar-alt"></i> Upcoming Events</button>
+      <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><i class="fas fa-newspaper"></i> Latest News</button>
+      <button class="tab-btn" data-tab="content" onclick="switchTab('content')"><i class="fas fa-pen"></i> Page Content</button>
+      <button class="tab-btn" data-tab="admins" id="adminsTabBtn" onclick="switchTab('admins')" style="display:none"><i class="fas fa-user-shield"></i> Admins</button>
+    </div>
+
+    <!-- Content -->
+    <div class="dashboard-content">
+      <!-- Team Tab -->
+      <div class="tab-panel active" id="panel-team">
+        <h2><i class="fas fa-users"></i> Team Members</h2>
+
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add Core Team Member</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input type="text" id="coreName" placeholder="Full Name"></div>
+            <div class="form-group"><label>Role</label><input type="text" id="coreRole" placeholder="e.g. Core Team Member"></div>
+          </div>
+          <div class="form-group"><label>Photo</label><input type="file" id="corePhoto" accept="image/*" onchange="previewSingle(event, 'corePhotoPreview', 'team')"></div>
+          <div class="photo-previews" id="corePhotoPreview"></div>
+          <button class="btn btn-primary btn-sm" onclick="addTeamMember('core')" style="margin-top:8px"><i class="fas fa-plus"></i> Add Core Member</button>
+        </div>
+
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add Active Team Member</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input type="text" id="activeName" placeholder="Full Name"></div>
+            <div class="form-group"><label>Role</label><input type="text" id="activeRole" placeholder="e.g. Active Team Member"></div>
+          </div>
+          <div class="form-group"><label>Photo</label><input type="file" id="activePhoto" accept="image/*" onchange="previewSingle(event, 'activePhotoPreview', 'team')"></div>
+          <div class="photo-previews" id="activePhotoPreview"></div>
+          <button class="btn btn-primary btn-sm" onclick="addTeamMember('active')" style="margin-top:8px"><i class="fas fa-plus"></i> Add Active Member</button>
+        </div>
+
+        <h3 style="font-size:1.2rem;font-weight:700;color:var(--purple);margin:32px 0 16px">Core Team</h3>
+        <div class="items-list" id="coreTeamList"></div>
+
+        <h3 style="font-size:1.2rem;font-weight:700;color:var(--purple);margin:32px 0 16px">Active Team</h3>
+        <div class="items-list" id="activeTeamList"></div>
+      </div>
+
+      <!-- Activities Tab -->
+      <div class="tab-panel" id="panel-activities">
+        <h2><i class="fas fa-calendar-check"></i> Activities</h2>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add Activity</h3>
+          <div class="form-row-4">
+            <div class="form-group"><label>Title</label><input type="text" id="actTitle" placeholder="Activity Title"></div>
+            <div class="form-group"><label>Date</label><input type="date" id="actDate"></div>
+            <div class="form-group"><label>Time</label><input type="text" id="actTime" placeholder="e.g. 3:00 PM"></div>
+            <div class="form-group"><label>Place</label><input type="text" id="actPlace" placeholder="e.g. Online via Zoom"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Short Description</label><textarea id="actShort" placeholder="Brief description"></textarea></div>
+            <div class="form-group"><label>Full Description</label><textarea id="actFull" placeholder="Detailed description"></textarea></div>
+          </div>
+          <div class="form-group"><label>Photos</label><input type="file" id="actPhotos" accept="image/*" multiple onchange="previewMultiple(event, 'actPhotosPreview', 'activities')"></div>
+          <div class="photo-previews" id="actPhotosPreview"></div>
+          <button class="btn btn-primary btn-sm" onclick="addActivity()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Activity</button>
+        </div>
+        <div class="items-list" id="activitiesList"></div>
+      </div>
+
+      <!-- Events Tab -->
+      <div class="tab-panel" id="panel-events">
+        <h2><i class="fas fa-calendar-alt"></i> Upcoming Events</h2>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add Event</h3>
+          <div class="form-row-4">
+            <div class="form-group"><label>Title</label><input type="text" id="evTitle" placeholder="Event Title"></div>
+            <div class="form-group"><label>Date</label><input type="date" id="evDate"></div>
+            <div class="form-group"><label>Time</label><input type="text" id="evTime" placeholder="e.g. 5:00 PM"></div>
+            <div class="form-group"><label>Place</label><input type="text" id="evPlace" placeholder="e.g. Online via Zoom"></div>
+          </div>
+          <div class="form-group"><label>Description</label><textarea id="evDesc" placeholder="Event description"></textarea></div>
+          <div class="form-group"><label>Registration Link</label><input type="url" id="evRegLink" placeholder="https://forms.google.com/..."></div>
+          <button class="btn btn-primary btn-sm" onclick="addEvent()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Event</button>
+        </div>
+        <div class="items-list" id="eventsList"></div>
+      </div>
+
+      <!-- News Tab -->
+      <div class="tab-panel" id="panel-news">
+        <h2><i class="fas fa-newspaper"></i> Latest News</h2>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add News</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Title</label><input type="text" id="newsTitle" placeholder="News Title"></div>
+            <div class="form-group"><label>Description</label><textarea id="newsDesc" placeholder="News description"></textarea></div>
+          </div>
+           <div class="form-group"><label>Main Photos</label><input type="file" id="newsMainPhoto" accept="image/*" multiple onchange="previewMultiple(event, 'newsMainPreview', 'news')"></div>
+           <div class="photo-previews" id="newsMainPreview"></div>
+           <div class="form-group"><label>Extra Photos</label><input type="file" id="newsExtraPhotos" accept="image/*" multiple onchange="previewMultiple(event, 'newsExtraPreview', 'news')"></div>
+          <div class="photo-previews" id="newsExtraPreview"></div>
+          <button class="btn btn-primary btn-sm" onclick="addNews()" style="margin-top:8px"><i class="fas fa-plus"></i> Add News</button>
+        </div>
+        <div class="items-list" id="newsList"></div>
+      </div>
+
+      <!-- Page Content Tab -->
+      <div class="tab-panel" id="panel-content">
+        <h2><i class="fas fa-pen"></i> Page Content</h2>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Hero Section</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Hero Title</label><input type="text" id="pcHeroTitle" placeholder="Main headline"></div>
+            <div class="form-group"><label>Hero Subtitle</label><input type="text" id="pcHeroSubtitle" placeholder="Subheadline"></div>
+          </div>
+        </div>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">About Section</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Title</label><input type="text" id="pcAboutTitle" placeholder="Section title"></div>
+            <div class="form-group"><label>Description</label><textarea id="pcAboutDesc" placeholder="About description" style="min-height:80px"></textarea></div>
+          </div>
+        </div>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Statistics</h3>
+          <div id="pcStatsList"></div>
+          <button class="btn btn-outline btn-sm" onclick="addStatRow()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Stat</button>
+        </div>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Social Media &amp; Footer</h3>
+          <div class="form-row-4">
+            <div class="form-group"><label>Instagram URL</label><input type="url" id="pcInsta" placeholder="https://instagram.com/..."></div>
+            <div class="form-group"><label>LinkedIn URL</label><input type="url" id="pcLinkedin" placeholder="https://linkedin.com/..."></div>
+            <div class="form-group"><label>Contact Email</label><input type="email" id="pcEmail" placeholder="email@example.com"></div>
+            <div class="form-group"><label>Footer Text</label><input type="text" id="pcFooter" placeholder="Copyright text"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="savePageContent()" style="margin-top:16px"><i class="fas fa-save"></i> Save Page Content</button>
+        <button class="btn btn-outline btn-sm" onclick="loadPageContentForm()" style="margin-top:16px;margin-left:8px"><i class="fas fa-undo"></i> Reset Form</button>
+      </div>
+
+      <!-- Admins Tab -->
+      <div class="tab-panel" id="panel-admins">
+        <h2><i class="fas fa-user-shield"></i> Admin Management</h2>
+        <div class="glass-card add-form">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--purple);margin-bottom:16px">Add New Admin</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input type="email" id="newAdminEmail" placeholder="admin@example.com">
+              <span style="font-size:0.75rem;color:#999;margin-top:4px;display:block">They set their own password on first login.</span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Admin</button>
+        </div>
+        <h3 style="font-size:1.2rem;font-weight:700;color:var(--purple);margin:32px 0 16px">Current Admins</h3>
+        <div class="items-list" id="adminsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Crop Modal -->
+  <div class="crop-modal" id="cropModal">
+    <div class="crop-modal-content">
+      <div class="crop-modal-header">
+        <span style="font-weight:700;color:var(--purple)">Crop Image</span>
+        <button class="crop-close" onclick="closeCrop()">&times;</button>
+      </div>
+      <div class="crop-container" id="cropContainer">
+        <img id="cropImage" alt="crop">
+        <div class="crop-box" id="cropBox">
+          <div class="crop-handle nw"></div>
+          <div class="crop-handle ne"></div>
+          <div class="crop-handle sw"></div>
+          <div class="crop-handle se"></div>
+        </div>
+      </div>
+      <div class="crop-modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="closeCrop()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="applyCrop()"><i class="fas fa-cut"></i> Apply Crop</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== FIREBASE DATA LAYER ==========
+    const COLLECTIONS = {
+      admins: 'admins',
+      coreTeam: 'coreTeam',
+      activeTeam: 'activeTeam',
+      activities: 'activities',
+      events: 'events',
+      news: 'news',
+      pageContent: 'pageContent'
+    };
+
+    let session = {};
+    let currentAdmin = null;
+    let loggedIn = false;
+
+    const DEFAULT_PAGE_CONTENT = {
+      heroTitle: 'Palestinian Ophthalmology Interest Group',
+      heroSubtitle: 'Advancing clinical research, medical education, and eye-health awareness in Palestine.',
+      aboutTitle: 'Who We Are',
+      aboutDescription: 'We are a group of enthusiastic medical students passionate about ophthalmology, dedicated to fostering interest and knowledge in eye care among Palestinian students.',
+      stats: [
+        { number: '50', suffix: '+', label: 'Active Members' },
+        { number: '10', suffix: '+', label: 'Events Organized' },
+        { number: '5', suffix: '+', label: 'Research Projects' },
+        { number: '100', suffix: '%', label: 'Dedication' }
+      ],
+      social: {
+        instagram: 'https://www.instagram.com/poig.palestine/',
+        linkedin: 'https://www.linkedin.com/company/poig',
+        email: 'poig.palestine@gmail.com'
+      },
+      footerText: '\u00a9 2025 Palestinian Ophthalmology Interest Group. All rights reserved.'
+    };
+
+    // Firestore helpers
+    async function loadAllFromFirestore() {
+      const names = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
+      const [collections, pageContent, adminsSnap] = await Promise.all([
+        Promise.all(names.map(name =>
+          db.collection(name).get().then(snapshot =>
+            snapshot.empty ? [] : snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0))
+          ).catch(() => [])
+        )),
+        db.collection(COLLECTIONS.pageContent).doc('main').get()
+          .then(d => d.exists ? d.data() : DEFAULT_PAGE_CONTENT)
+          .catch(() => DEFAULT_PAGE_CONTENT),
+        db.collection(COLLECTIONS.admins).get()
+          .then(s => s.empty ? [] : s.docs.map(d => d.data()))
+          .catch(() => [])
+      ]);
+      names.forEach((name, i) => session[name] = collections[i]);
+      session[COLLECTIONS.pageContent] = pageContent;
+      session[COLLECTIONS.admins] = adminsSnap;
+    }
+
+    function stripPhotoData(items) {
+      return (items || []).map(item => {
+        const { photoData, photosData, mainPhotoData, mainPhotosData, extraPhotosData, ...rest } = item;
+        return rest;
+      });
+    }
+
+    async function saveCollection(name) {
+      const snap = await db.collection(name).get();
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      stripPhotoData(session[name]).forEach(item => {
+        const { _firebaseId, ...data } = item;
+        batch.set(db.collection(name).doc(), data);
+      });
+      await batch.commit();
+    }
+
+    function getData(key) {
+      return session[key] || [];
+    }
+    function setData(key, data) {
+      session[key] = data;
+    }
+    function getPageContent() {
+      return session[COLLECTIONS.pageContent] || DEFAULT_PAGE_CONTENT;
+    }
+    function setPageContent(data) {
+      session[COLLECTIONS.pageContent] = data;
+    }
+
+    // ========== AUTH ==========
+    function showLoginError(msg) {
+      document.getElementById('loginError').textContent = msg;
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const errorEl = document.getElementById('loginError');
+      errorEl.textContent = '';
+
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter both email and password.';
+        return;
+      }
+
+      try {
+        // Tarpit: slow down brute force attempts
+        await new Promise(r => setTimeout(r, 800));
+
+        let userCred;
+        try {
+          userCred = await auth.signInWithEmailAndPassword(email, password);
+        } catch (signInErr) {
+          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            const allAdmins = await db.collection(COLLECTIONS.admins).get();
+            if (allAdmins.empty) {
+              // First ever admin — create account and seed
+              userCred = await auth.createUserWithEmailAndPassword(email, password);
+              await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: true });
+              await seedDefaultData();
+              currentAdmin = { email, isMain: true };
+              loggedIn = true;
+              enterDashboard();
+              return;
+            }
+            // Check if this email was invited as admin
+            const adminDoc = await db.collection(COLLECTIONS.admins).doc(email).get();
+            if (adminDoc.exists) {
+              // Invited admin creating their account for the first time
+              userCred = await auth.createUserWithEmailAndPassword(email, password);
+              currentAdmin = adminDoc.data();
+              loggedIn = true;
+              enterDashboard();
+              return;
+            }
+          }
+          throw signInErr;
+        }
+
+        // Check if this user is an authorized admin
+        const adminDoc = await db.collection(COLLECTIONS.admins).doc(email).get();
+        if (!adminDoc.exists) {
+          // User exists in Auth but not in admins collection
+          const allAdmins = await db.collection(COLLECTIONS.admins).get();
+          if (allAdmins.empty) {
+            // Rescue: admins collection is empty, promote and seed
+            await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: true });
+            await seedDefaultData();
+            currentAdmin = { email, isMain: true };
+            loggedIn = true;
+            enterDashboard();
+            return;
+          }
+          await auth.signOut();
+          errorEl.textContent = 'You are not authorized as an admin.';
+          return;
+        }
+
+        currentAdmin = adminDoc.data();
+        loggedIn = true;
+        enterDashboard();
+      } catch (err) {
+        if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          errorEl.textContent = 'Invalid email or password.';
+        } else if (err.code === 'auth/email-already-in-use') {
+          errorEl.textContent = 'An admin account with this email already exists. Try logging in.';
+        } else {
+          errorEl.textContent = err.message;
+        }
+      }
+    }
+
+    async function enterDashboard() {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      const adminsTabBtn = document.getElementById('adminsTabBtn');
+      if (adminsTabBtn) {
+        if (currentAdmin && currentAdmin.isMain) {
+          adminsTabBtn.removeAttribute('style');
+        } else {
+          adminsTabBtn.style.display = 'none';
+        }
+      }
+      await loadAll();
+      showToast('Welcome back!', 'success');
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loginPassword').addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleLogin();
+      });
+      document.getElementById('loginEmail').addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleLogin();
+      });
+    });
+
+    // ========== TOAST ==========
+    function showToast(msg, type) {
+      const el = document.getElementById('toast');
+      el.className = 'toast show ' + (type || '');
+      const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'spinner fa-pulse';
+      el.innerHTML = '<i class="fas fa-' + icon + '"></i> ' + msg;
+      clearTimeout(el._timer);
+      if (type) el._timer = setTimeout(() => { el.classList.remove('show'); }, 3000);
+    }
+
+    // ========== TAB SWITCHING ==========
+    function switchTab(tab) {
+      const hadEdit = Object.values(editing).some(Boolean);
+      Object.keys(editing).forEach(k => { editing[k] = null; });
+      if (hadEdit) renderAll();
+      const adminsTabBtn = document.getElementById('adminsTabBtn');
+      if (adminsTabBtn) {
+        if (currentAdmin && currentAdmin.isMain) {
+          adminsTabBtn.removeAttribute('style');
+        } else {
+          adminsTabBtn.style.display = 'none';
+        }
+      }
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('.tab-btn[data-tab="' + tab + '"]').classList.add('active');
+      document.getElementById('panel-' + tab).classList.add('active');
+    }
+
+    // ========== PHOTO PREVIEW ==========
+    const pendingPhotos = {};
+
+    function previewSingle(e, containerId, folder) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const b64 = ev.target.result;
+        const div = document.createElement('div');
+        div.className = 'photo-preview';
+        div.innerHTML = '<img src="' + b64 + '" alt="preview">' +
+          '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+          '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
+          '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
+          '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewSingleCrop(\'' + containerId + '\',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+        container.appendChild(div);
+        pendingPhotos[containerId] = { data: b64, name: file.name };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewSingleCrop(containerId, fileName, cropped) {
+      pendingPhotos[containerId] = { data: cropped, name: fileName };
+      const container = document.getElementById(containerId);
+      if (container) {
+        const img = container.querySelector('img');
+        if (img) img.src = cropped;
+      }
+      closeCrop();
+    }
+
+    function previewMultiple(e, containerId, folder) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+      const results = [];
+      let loaded = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          const b64 = ev.target.result;
+          const idx = results.length;
+          const div = document.createElement('div');
+          div.className = 'photo-preview';
+          div.innerHTML = '<img src="' + b64 + '" alt="preview">' +
+            '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+            '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
+            '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
+            '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+          container.appendChild(div);
+          results.push({ data: b64, name: file.name });
+          loaded++;
+          if (loaded === files.length) {
+            pendingPhotos[containerId] = results;
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function previewMultipleCrop(containerId, idx, fileName, cropped) {
+      const arr = pendingPhotos[containerId];
+      if (arr && arr[idx]) arr[idx] = { data: cropped, name: fileName };
+      const container = document.getElementById(containerId);
+      if (container) {
+        const imgs = container.querySelectorAll('img');
+        if (imgs[idx]) imgs[idx].src = cropped;
+      }
+    }
+
+    function getPendingSingle(id) {
+      const val = pendingPhotos[id];
+      delete pendingPhotos[id];
+      return val || null;
+    }
+    function getPendingMultiple(id) {
+      const val = pendingPhotos[id];
+      delete pendingPhotos[id];
+      return val || [];
+    }
+
+    // ========== CROP TOOL ==========
+    let cropCallback = null;
+    let cropImageSrc = null;
+
+    function initCrop(img) {
+      const container = document.getElementById('cropContainer');
+      const box = document.getElementById('cropBox');
+      const rect = img.getBoundingClientRect();
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
+      // Default crop box: 80% of the image, centered
+      const cw = Math.min(rect.width * 0.8, imgW);
+      const ch = Math.min(rect.height * 0.8, imgH);
+      const cx = (rect.width - cw) / 2;
+      const cy = (rect.height - ch) / 2;
+      box.style.left = cx + 'px';
+      box.style.top = cy + 'px';
+      box.style.width = cw + 'px';
+      box.style.height = ch + 'px';
+    }
+
+    function openCrop(imageSrc, callback) {
+      cropCallback = callback;
+      cropImageSrc = imageSrc;
+      const modal = document.getElementById('cropModal');
+      const img = document.getElementById('cropImage');
+      modal.classList.add('active');
+      img.src = imageSrc;
+      img.onload = () => initCrop(img);
+    }
+
+    function closeCrop() {
+      document.getElementById('cropModal').classList.remove('active');
+      cropCallback = null;
+      cropImageSrc = null;
+    }
+
+    function applyCrop() {
+      const img = document.getElementById('cropImage');
+      const box = document.getElementById('cropBox');
+      const container = document.getElementById('cropContainer');
+      if (!cropCallback) return;
+      const scaleX = img.naturalWidth / img.getBoundingClientRect().width;
+      const scaleY = img.naturalHeight / img.getBoundingClientRect().height;
+      const r = container.getBoundingClientRect();
+      const bx = box.offsetLeft;
+      const by = box.offsetTop;
+      const bw = parseFloat(box.style.width);
+      const bh = parseFloat(box.style.height);
+      const sx = Math.round(bx * scaleX);
+      const sy = Math.round(by * scaleY);
+      const sw = Math.round(bw * scaleX);
+      const sh = Math.round(bh * scaleY);
+      const canvas = document.createElement('canvas');
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const cropped = canvas.toDataURL('image/jpeg', 0.92);
+      closeCrop();
+      cropCallback(cropped);
+    }
+
+    // Crop box drag & resize
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('cropContainer');
+      const box = document.getElementById('cropBox');
+      if (!container || !box) return;
+
+      let dragging = false, resizing = false, startX, startY, startL, startT, startW, startH, handle = '';
+
+      container.addEventListener('mousedown', e => {
+        const h = e.target.closest('.crop-handle');
+        if (h) { resizing = true; handle = h.className.includes('nw') ? 'nw' : h.className.includes('ne') ? 'ne' : h.className.includes('sw') ? 'sw' : 'se'; }
+        else if (e.target === box) { dragging = true; }
+        else return;
+        startX = e.clientX; startY = e.clientY;
+        startL = box.offsetLeft; startT = box.offsetTop;
+        startW = parseFloat(box.style.width); startH = parseFloat(box.style.height);
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', e => {
+        if (!dragging && !resizing) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const parentRect = container.getBoundingClientRect();
+        if (dragging) {
+          let nl = startL + dx, nt = startT + dy;
+          nl = Math.max(0, Math.min(nl, parentRect.width - startW));
+          nt = Math.max(0, Math.min(nt, parentRect.height - startH));
+          box.style.left = nl + 'px';
+          box.style.top = nt + 'px';
+        }
+        if (resizing) {
+          let nw = startW, nh = startH, nl = startL, nt = startT;
+          if (handle.includes('e')) { nw = Math.max(30, startW + dx); }
+          if (handle.includes('w')) { nw = Math.max(30, startW - dx); nl = startL + (startW - nw); }
+          if (handle.includes('s')) { nh = Math.max(30, startH + dy); }
+          if (handle.includes('n')) { nh = Math.max(30, startH - dy); nt = startT + (startH - nh); }
+          if (nl + nw > parentRect.width) { nw = parentRect.width - nl; }
+          if (nt + nh > parentRect.height) { nh = parentRect.height - nt; }
+          box.style.left = nl + 'px'; box.style.top = nt + 'px';
+          box.style.width = nw + 'px'; box.style.height = nh + 'px';
+        }
+      });
+
+      document.addEventListener('mouseup', () => { dragging = false; resizing = false; });
+    });
+
+    // ========== RENDER HELPERS ==========
+    function getInitials(name) {
+      return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+    }
+
+    function existingPhotoPreviewHTML(photoPath, folder) {
+      const name = photoPath.split('/').pop();
+      return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not placed yet</span>\'">' +
+        '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+        '<span style="font-size:0.75rem;color:#888;">' + name + '</span> ' +
+        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a></div></div>';
+    }
+
+    function renderTeam(containerId, data, storageKey) {
+      const container = document.getElementById(containerId);
+      if (!data.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No members yet.</p></div>';
+        return;
+      }
+      const type = storageKey === COLLECTIONS.coreTeam ? 'core' : 'active';
+      container.innerHTML = data.map(m => {
+        if (editing[type] === m.id) {
+          return `
+            <div class="glass-card item-card" style="flex-direction:column">
+              <div class="edit-form-fields">
+                <div class="form-row">
+                  <div class="form-group"><label>Name</label><input type="text" class="edit-input" id="edit_${m.id}_name" value="${m.name.replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Role</label><input type="text" class="edit-input" id="edit_${m.id}_role" value="${(m.role||'').replace(/"/g,'&quot;')}"></div>
+                </div>
+                <div class="form-group" style="margin-top:8px">
+                  <label>Photo</label>
+                  <input type="file" accept="image/*" onchange="previewSingle(event,'edit_${m.id}_photo','team')">
+                  <div class="photo-previews" id="edit_${m.id}_photo">
+                    ${m.photo ? existingPhotoPreviewHTML(m.photo, 'team') : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="item-actions" style="margin-top:12px">
+                <button class="btn btn-primary btn-sm" onclick="saveEditTeamMember('${type}','${m.id}')"><i class="fas fa-save"></i> Save</button>
+                <button class="btn btn-outline btn-sm" onclick="cancelEdit('${type}')"><i class="fas fa-times"></i> Cancel</button>
+              </div>
+            </div>`;
+        }
+        return `
+        <div class="glass-card item-card" draggable="true" data-item-id="${m.id}" data-storage-key="${storageKey}">
+          <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
+          ${m.photo ? '<img class="item-photo" src="' + m.photo + '" alt="' + m.name + '" onerror="this.style.display=\'none\'">' :
+            '<div class="item-photo" style="background:linear-gradient(135deg,var(--purple),var(--orange-light));display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:1.2rem">' + getInitials(m.name) + '</div>'}
+          <div class="item-info">
+            <h4>${m.name}</h4>
+            <p>${m.role || ''}</p>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-sm" onclick="startEditTeamMember('${type}','${m.id}')"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeItem('${storageKey}','${m.id}')"><i class="fas fa-trash"></i> Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderActivities() {
+      const data = getData(COLLECTIONS.activities);
+      const container = document.getElementById('activitiesList');
+      if (!data.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><p>No activities yet.</p></div>';
+        return;
+      }
+      container.innerHTML = data.map(a => {
+        if (editing.activity === a.id) {
+          return `
+            <div class="glass-card item-card" style="flex-direction:column">
+              <div class="edit-form-fields">
+                <div class="form-row-4">
+                  <div class="form-group"><label>Title</label><input type="text" class="edit-input" id="edit_act_${a.id}_title" value="${(a.title||'').replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Date</label><input type="date" class="edit-input" id="edit_act_${a.id}_date" value="${a.date||''}"></div>
+                  <div class="form-group"><label>Time</label><input type="text" class="edit-input" id="edit_act_${a.id}_time" value="${(a.time||'').replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Place</label><input type="text" class="edit-input" id="edit_act_${a.id}_place" value="${(a.place||'').replace(/"/g,'&quot;')}"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Short Description</label><textarea class="edit-input" id="edit_act_${a.id}_short">${(a.shortDescription||'').replace(/"/g,'&quot;')}</textarea></div>
+                  <div class="form-group"><label>Full Description</label><textarea class="edit-input" id="edit_act_${a.id}_full">${(a.fullDescription||'').replace(/"/g,'&quot;')}</textarea></div>
+                </div>
+                <div class="form-group" style="margin-top:8px">
+                  <label>Photos</label>
+                  <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${a.id}_photos','activities')">
+                  <div class="photo-previews" id="edit_${a.id}_photos">
+                    ${(a.photos && a.photos.length) ? a.photos.map(p => existingPhotoPreviewHTML(p, 'activities')).join('') : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="item-actions" style="margin-top:12px">
+                <button class="btn btn-primary btn-sm" onclick="saveEditActivity('${a.id}')"><i class="fas fa-save"></i> Save</button>
+                <button class="btn btn-outline btn-sm" onclick="cancelEdit('activity')"><i class="fas fa-times"></i> Cancel</button>
+              </div>
+            </div>`;
+        }
+        return `
+        <div class="glass-card item-card" draggable="true" data-item-id="${a.id}" data-storage-key="${COLLECTIONS.activities}">
+          <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
+          <div class="item-info">
+            <h4>${a.title}</h4>
+            <p><i class="fas fa-calendar-day" style="color:var(--orange);width:16px"></i> ${a.date || ''} ${a.time ? '· <i class="fas fa-clock" style="color:var(--orange)"></i> ' + a.time : ''} ${a.place ? '· <i class="fas fa-map-marker-alt" style="color:var(--orange)"></i> ' + a.place : ''}</p>
+            <p style="margin-top:4px;font-size:0.85rem;color:#555">${a.shortDescription || ''}</p>
+            ${(a.photos && a.photos.length) ? '<div class="item-photos-sm">' + a.photos.map(p => '<img src="' + p + '" alt="photo" onerror="this.style.display=\'none\'">').join('') + '</div>' : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-sm" onclick="startEditActivity('${a.id}')"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeItem('${COLLECTIONS.activities}','${a.id}')"><i class="fas fa-trash"></i> Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderEvents() {
+      const data = getData(COLLECTIONS.events);
+      const container = document.getElementById('eventsList');
+      if (!data.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>No events yet.</p></div>';
+        return;
+      }
+      container.innerHTML = data.map(e => {
+        if (editing.event === e.id) {
+          return `
+            <div class="glass-card item-card" style="flex-direction:column">
+              <div class="edit-form-fields">
+                <div class="form-row-4">
+                  <div class="form-group"><label>Title</label><input type="text" class="edit-input" id="edit_ev_${e.id}_title" value="${(e.title||'').replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Date</label><input type="date" class="edit-input" id="edit_ev_${e.id}_date" value="${e.date||''}"></div>
+                  <div class="form-group"><label>Time</label><input type="text" class="edit-input" id="edit_ev_${e.id}_time" value="${(e.time||'').replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Place</label><input type="text" class="edit-input" id="edit_ev_${e.id}_place" value="${(e.place||'').replace(/"/g,'&quot;')}"></div>
+                </div>
+                <div class="form-group"><label>Description</label><textarea class="edit-input" id="edit_ev_${e.id}_desc">${(e.description||'').replace(/"/g,'&quot;')}</textarea></div>
+                <div class="form-group"><label>Registration Link</label><input type="url" class="edit-input" id="edit_ev_${e.id}_reg" value="${(e.registrationLink||'').replace(/"/g,'&quot;')}"></div>
+              </div>
+              <div class="item-actions" style="margin-top:12px">
+                <button class="btn btn-primary btn-sm" onclick="saveEditEvent('${e.id}')"><i class="fas fa-save"></i> Save</button>
+                <button class="btn btn-outline btn-sm" onclick="cancelEdit('event')"><i class="fas fa-times"></i> Cancel</button>
+              </div>
+            </div>`;
+        }
+        return `
+        <div class="glass-card item-card">
+          <div class="item-info">
+            <h4>${e.title}</h4>
+            <p><i class="fas fa-calendar-day" style="color:var(--orange);width:16px"></i> ${e.date || ''} ${e.time ? '· <i class="fas fa-clock" style="color:var(--orange)"></i> ' + e.time : ''} ${e.place ? '· <i class="fas fa-map-marker-alt" style="color:var(--orange)"></i> ' + e.place : ''}</p>
+            <p style="margin-top:4px;font-size:0.85rem;color:#555">${e.description || ''}</p>
+            ${e.registrationLink ? '<a href="' + e.registrationLink + '" target="_blank" class="btn btn-primary btn-sm" style="margin-top:8px;display:inline-flex"><i class="fas fa-clipboard-list"></i> Register</a>' : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-sm" onclick="startEditEvent('${e.id}')"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeItem('${COLLECTIONS.events}','${e.id}')"><i class="fas fa-trash"></i> Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderNews() {
+      const data = getData(COLLECTIONS.news);
+      const container = document.getElementById('newsList');
+      if (!data.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-newspaper"></i><p>No news yet.</p></div>';
+        return;
+      }
+      container.innerHTML = data.map(n => {
+        if (editing.news === n.id) {
+          return `
+            <div class="glass-card item-card" style="flex-direction:column">
+              <div class="edit-form-fields">
+                <div class="form-row">
+                  <div class="form-group"><label>Title</label><input type="text" class="edit-input" id="edit_news_${n.id}_title" value="${(n.title||'').replace(/"/g,'&quot;')}"></div>
+                  <div class="form-group"><label>Description</label><textarea class="edit-input" id="edit_news_${n.id}_desc">${(n.description||'').replace(/"/g,'&quot;')}</textarea></div>
+                </div>
+                 <div class="form-group" style="margin-top:8px">
+                  <label>Main Photos</label>
+                  <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${n.id}_mainphotos','news')">
+                  <div class="photo-previews" id="edit_${n.id}_mainphotos">
+                    ${(n.mainPhotos && n.mainPhotos.length) ? n.mainPhotos.map(p => existingPhotoPreviewHTML(p, 'news')).join('') : n.mainPhoto ? existingPhotoPreviewHTML(n.mainPhoto, 'news') : ''}
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Extra Photos</label>
+                  <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${n.id}_extraphotos','news')">
+                  <div class="photo-previews" id="edit_${n.id}_extraphotos">
+                    ${(n.extraPhotos && n.extraPhotos.length) ? n.extraPhotos.map(p => existingPhotoPreviewHTML(p, 'news')).join('') : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="item-actions" style="margin-top:12px">
+                <button class="btn btn-primary btn-sm" onclick="saveEditNews('${n.id}')"><i class="fas fa-save"></i> Save</button>
+                <button class="btn btn-outline btn-sm" onclick="cancelEdit('news')"><i class="fas fa-times"></i> Cancel</button>
+              </div>
+            </div>`;
+        }
+        return `
+        <div class="glass-card item-card" draggable="true" data-item-id="${n.id}" data-storage-key="${COLLECTIONS.news}">
+          <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
+          ${(n.mainPhotos && n.mainPhotos.length) ? '<img class="item-photo" src="' + n.mainPhotos[0] + '" alt="' + n.title + '" onerror="this.style.display=\'none\'">' : n.mainPhoto ? '<img class="item-photo" src="' + n.mainPhoto + '" alt="' + n.title + '" onerror="this.style.display=\'none\'">' : ''}
+          <div class="item-info">
+            <h4>${n.title}</h4>
+            <p style="font-size:0.85rem;color:#555">${n.description || ''}</p>
+            ${(n.mainPhotos && n.mainPhotos.length > 1) ? '<div class="item-photos-sm">' + n.mainPhotos.slice(1).map(p => '<img src="' + p + '" alt="photo" onerror="this.style.display=\'none\'">').join('') + '</div>' : ''}
+            ${(n.extraPhotos && n.extraPhotos.length) ? '<div class="item-photos-sm">' + n.extraPhotos.map(p => '<img src="' + p + '" alt="photo" onerror="this.style.display=\'none\'">').join('') + '</div>' : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-outline btn-sm" onclick="startEditNews('${n.id}')"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeItem('${COLLECTIONS.news}','${n.id}')"><i class="fas fa-trash"></i> Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderTeam('coreTeamList', getData(COLLECTIONS.coreTeam), COLLECTIONS.coreTeam);
+      renderTeam('activeTeamList', getData(COLLECTIONS.activeTeam), COLLECTIONS.activeTeam);
+      renderActivities();
+      renderEvents();
+      renderNews();
+    }
+
+    function setupSortable() {
+      const containers = [
+        { el: document.getElementById('coreTeamList'), key: COLLECTIONS.coreTeam },
+        { el: document.getElementById('activeTeamList'), key: COLLECTIONS.activeTeam },
+        { el: document.getElementById('activitiesList'), key: COLLECTIONS.activities },
+        { el: document.getElementById('newsList'), key: COLLECTIONS.news }
+      ];
+
+      containers.forEach(({ el, key }) => {
+        if (!el) return;
+
+        let draggedId = null, draggedEl = null;
+
+        el.addEventListener('dragstart', e => {
+          const card = e.target.closest('.item-card[draggable]');
+          if (!card) return;
+          draggedId = card.dataset.itemId;
+          draggedEl = card;
+          requestAnimationFrame(() => card.classList.add('dragging'));
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', draggedId);
+        });
+
+        el.addEventListener('dragover', e => {
+          e.preventDefault();
+          if (!draggedId) return;
+          const card = e.target.closest('.item-card:not(.dragging)');
+          if (!card) return;
+          const rect = card.getBoundingClientRect();
+          const mid = rect.top + rect.height / 2;
+          el.querySelectorAll('.item-card').forEach(c => { c.classList.remove('drag-over-top', 'drag-over-bottom'); });
+          if (e.clientY < mid) card.classList.add('drag-over-top');
+          else card.classList.add('drag-over-bottom');
+        });
+
+        el.addEventListener('drop', e => {
+          e.preventDefault();
+          el.querySelectorAll('.item-card').forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+          if (!draggedEl || !draggedId) return;
+          const target = e.target.closest('.item-card:not(.dragging)');
+          if (!target) return;
+          const data = getData(key);
+          const fromIdx = data.findIndex(item => item.id === draggedId);
+          const toIdx = data.findIndex(item => item.id === target.dataset.itemId);
+          if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+
+          const [moved] = data.splice(fromIdx, 1);
+          data.splice(toIdx, 0, moved);
+          data.forEach((item, i) => item.order = i);
+          setData(key, data);
+
+          // Move DOM element without full re-render
+          const rect = target.getBoundingClientRect();
+          const mid = rect.top + rect.height / 2;
+          const container = target.parentNode;
+          if (e.clientY < mid) {
+            container.insertBefore(draggedEl, target);
+          } else {
+            container.insertBefore(draggedEl, target.nextSibling);
+          }
+          // Immediately restore opacity so no flash
+          draggedEl.classList.remove('dragging');
+        });
+
+        el.addEventListener('dragend', () => {
+          el.querySelectorAll('.item-card').forEach(c => c.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+          draggedId = null;
+          draggedEl = null;
+        });
+      });
+    }
+
+    // ========== EDITING TRACKING ==========
+    const editing = { core: null, active: null, activity: null, event: null, news: null };
+
+    function cancelEdit(type) {
+      editing[type] = null;
+      renderAll();
+    }
+
+    // ========== CRUD ==========
+
+    function addTeamMember(type) {
+      const prefix = type === 'core' ? 'core' : 'active';
+      const name = document.getElementById(prefix + 'Name').value.trim();
+      const role = document.getElementById(prefix + 'Role').value.trim();
+      const pending = getPendingSingle(prefix + 'PhotoPreview');
+      if (!name) { showToast('Please enter a name.', 'error'); return; }
+      const key = type === 'core' ? COLLECTIONS.coreTeam : COLLECTIONS.activeTeam;
+      const data = getData(key);
+      const photo = pending ? 'team/' + pending.name : '';
+      const photoData = pending ? pending.data : '';
+      data.push({ id: Date.now().toString(), name, role, photo, photoData, order: data.length });
+      setData(key, data);
+      document.getElementById(prefix + 'Name').value = '';
+      document.getElementById(prefix + 'Role').value = '';
+      document.getElementById(prefix + 'Photo').value = '';
+      document.getElementById(prefix + 'PhotoPreview').innerHTML = '';
+      renderAll();
+      showToast('Member added. Download the photo and save to team/ folder.', 'success');
+    }
+
+    function saveEditTeamMember(type, id) {
+      const key = type === 'core' ? COLLECTIONS.coreTeam : COLLECTIONS.activeTeam;
+      const data = getData(key);
+      const idx = data.findIndex(m => m.id === id);
+      if (idx === -1) return;
+      const name = document.getElementById('edit_' + id + '_name').value.trim();
+      const role = document.getElementById('edit_' + id + '_role').value.trim();
+      if (!name) { showToast('Please enter a name.', 'error'); return; }
+      const pending = getPendingSingle('edit_' + id + '_photo');
+      data[idx] = { ...data[idx], name, role };
+      if (pending) { data[idx].photo = 'team/' + pending.name; data[idx].photoData = pending.data; }
+      setData(key, data);
+      editing[type] = null;
+      renderAll();
+      showToast('Member updated.', 'success');
+    }
+
+    function startEditTeamMember(type, id) {
+      editing[type] = id;
+      renderAll();
+    }
+
+    function addActivity() {
+      const title = document.getElementById('actTitle').value.trim();
+      const date = document.getElementById('actDate').value;
+      const time = document.getElementById('actTime').value.trim();
+      const place = document.getElementById('actPlace').value.trim();
+      const shortDescription = document.getElementById('actShort').value.trim();
+      const fullDescription = document.getElementById('actFull').value.trim();
+      const pending = getPendingMultiple('actPhotosPreview');
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const key = COLLECTIONS.activities;
+      const data = getData(key);
+      const photos = pending.length ? pending.map(p => 'activities/' + p.name) : [];
+      const photosData = pending.length ? pending.map(p => p.data) : [];
+      data.push({ id: Date.now().toString(), title, date, time, place, shortDescription, fullDescription, photos, photosData, order: data.length });
+      setData(key, data);
+      ['actTitle','actDate','actTime','actPlace','actShort','actFull'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('actPhotos').value = '';
+      document.getElementById('actPhotosPreview').innerHTML = '';
+      renderAll();
+      showToast('Activity added. Download photos and save to activities/ folder.', 'success');
+    }
+
+    function saveEditActivity(id) {
+      const data = getData(COLLECTIONS.activities);
+      const idx = data.findIndex(a => a.id === id);
+      if (idx === -1) return;
+      const title = document.getElementById('edit_act_' + id + '_title').value.trim();
+      const date = document.getElementById('edit_act_' + id + '_date').value;
+      const time = document.getElementById('edit_act_' + id + '_time').value.trim();
+      const place = document.getElementById('edit_act_' + id + '_place').value.trim();
+      const shortDescription = document.getElementById('edit_act_' + id + '_short').value.trim();
+      const fullDescription = document.getElementById('edit_act_' + id + '_full').value.trim();
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const pending = getPendingMultiple('edit_' + id + '_photos');
+      data[idx] = { ...data[idx], title, date, time, place, shortDescription, fullDescription };
+      if (pending.length) { data[idx].photos = pending.map(p => 'activities/' + p.name); data[idx].photosData = pending.map(p => p.data); }
+      setData(COLLECTIONS.activities, data);
+      editing.activity = null;
+      renderAll();
+      showToast('Activity updated.', 'success');
+    }
+
+    function startEditActivity(id) {
+      editing.activity = id;
+      renderAll();
+    }
+
+    function addEvent() {
+      const title = document.getElementById('evTitle').value.trim();
+      const date = document.getElementById('evDate').value;
+      const time = document.getElementById('evTime').value.trim();
+      const place = document.getElementById('evPlace').value.trim();
+      const description = document.getElementById('evDesc').value.trim();
+      const registrationLink = document.getElementById('evRegLink').value.trim();
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const key = COLLECTIONS.events;
+      const data = getData(key);
+      data.push({ id: Date.now().toString(), title, date, time, place, description, registrationLink, order: data.length });
+      setData(key, data);
+      ['evTitle','evDate','evTime','evPlace','evDesc','evRegLink'].forEach(id => document.getElementById(id).value = '');
+      renderAll();
+      showToast('Event added.', 'success');
+    }
+
+    function saveEditEvent(id) {
+      const data = getData(COLLECTIONS.events);
+      const idx = data.findIndex(e => e.id === id);
+      if (idx === -1) return;
+      const title = document.getElementById('edit_ev_' + id + '_title').value.trim();
+      const date = document.getElementById('edit_ev_' + id + '_date').value;
+      const time = document.getElementById('edit_ev_' + id + '_time').value.trim();
+      const place = document.getElementById('edit_ev_' + id + '_place').value.trim();
+      const description = document.getElementById('edit_ev_' + id + '_desc').value.trim();
+      const registrationLink = document.getElementById('edit_ev_' + id + '_reg').value.trim();
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      data[idx] = { ...data[idx], title, date, time, place, description, registrationLink };
+      setData(COLLECTIONS.events, data);
+      editing.event = null;
+      renderAll();
+      showToast('Event updated.', 'success');
+    }
+
+    function startEditEvent(id) {
+      editing.event = id;
+      renderAll();
+    }
+
+    function addNews() {
+      const title = document.getElementById('newsTitle').value.trim();
+      const description = document.getElementById('newsDesc').value.trim();
+      const mainPending = getPendingMultiple('newsMainPreview');
+      const extraPending = getPendingMultiple('newsExtraPreview');
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const key = COLLECTIONS.news;
+      const data = getData(key);
+      const mainPhotos = mainPending.length ? mainPending.map(p => 'news/' + p.name) : [];
+      const mainPhotosData = mainPending.length ? mainPending.map(p => p.data) : [];
+      const extraPhotos = extraPending.length ? extraPending.map(p => 'news/' + p.name) : [];
+      const extraPhotosData = extraPending.length ? extraPending.map(p => p.data) : [];
+      data.push({ id: Date.now().toString(), title, description, mainPhotos, mainPhotosData, mainPhoto: mainPhotos[0] || '', mainPhotoData: mainPhotosData[0] || '', extraPhotos, extraPhotosData, order: data.length });
+      setData(key, data);
+      document.getElementById('newsTitle').value = '';
+      document.getElementById('newsDesc').value = '';
+      document.getElementById('newsMainPhoto').value = '';
+      document.getElementById('newsExtraPhotos').value = '';
+      document.getElementById('newsMainPreview').innerHTML = '';
+      document.getElementById('newsExtraPreview').innerHTML = '';
+      renderAll();
+      showToast('News added. Download photos and save to news/ folder.', 'success');
+    }
+
+    function saveEditNews(id) {
+      const data = getData(COLLECTIONS.news);
+      const idx = data.findIndex(n => n.id === id);
+      if (idx === -1) return;
+      const title = document.getElementById('edit_news_' + id + '_title').value.trim();
+      const description = document.getElementById('edit_news_' + id + '_desc').value.trim();
+      if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const mainPending = getPendingMultiple('edit_' + id + '_mainphotos');
+      const extraPending = getPendingMultiple('edit_' + id + '_extraphotos');
+      data[idx] = { ...data[idx], title, description };
+      if (mainPending.length) { data[idx].mainPhotos = mainPending.map(p => 'news/' + p.name); data[idx].mainPhotosData = mainPending.map(p => p.data); data[idx].mainPhoto = data[idx].mainPhotos[0] || ''; data[idx].mainPhotoData = data[idx].mainPhotosData[0] || ''; }
+      if (extraPending.length) { data[idx].extraPhotos = extraPending.map(p => 'news/' + p.name); data[idx].extraPhotosData = extraPending.map(p => p.data); }
+      setData(COLLECTIONS.news, data);
+      editing.news = null;
+      renderAll();
+      showToast('News updated.', 'success');
+    }
+
+    function startEditNews(id) {
+      editing.news = id;
+      renderAll();
+    }
+
+    function removeItem(key, id) {
+      const data = getData(key).filter(item => item.id !== id);
+      setData(key, data);
+      renderAll();
+      showToast('Item removed.', 'success');
+    }
+
+    // ========== PAGE CONTENT ==========
+    function loadPageContentForm() {
+      const c = getPageContent();
+      document.getElementById('pcHeroTitle').value = c.heroTitle || '';
+      document.getElementById('pcHeroSubtitle').value = c.heroSubtitle || '';
+      document.getElementById('pcAboutTitle').value = c.aboutTitle || '';
+      document.getElementById('pcAboutDesc').value = c.aboutDescription || '';
+      document.getElementById('pcInsta').value = (c.social && c.social.instagram) || '';
+      document.getElementById('pcLinkedin').value = (c.social && c.social.linkedin) || '';
+      document.getElementById('pcEmail').value = (c.social && c.social.email) || '';
+      document.getElementById('pcFooter').value = c.footerText || '';
+      renderStatsForm(c.stats || []);
+    }
+
+    function renderStatsForm(stats) {
+      const container = document.getElementById('pcStatsList');
+      if (!stats.length) stats = [{ number: '', suffix: '+', label: '' }];
+      container.innerHTML = stats.map((s, i) => `
+        <div class="form-row-4" style="margin-bottom:10px;align-items:end">
+          <div class="form-group"><label>Number</label><input type="text" class="edit-input" id="pcStatNum_${i}" value="${s.number}"></div>
+          <div class="form-group"><label>Suffix</label><input type="text" class="edit-input" id="pcStatSuffix_${i}" value="${s.suffix}" style="max-width:70px"></div>
+          <div class="form-group"><label>Label</label><input type="text" class="edit-input" id="pcStatLabel_${i}" value="${s.label}"></div>
+          <button class="btn btn-danger btn-sm" onclick="removeStatRow(${i})" style="margin-bottom:4px"><i class="fas fa-times"></i></button>
+        </div>`).join('');
+    }
+
+    function addStatRow() {
+      const container = document.getElementById('pcStatsList');
+      const count = container.children.length;
+      const div = document.createElement('div');
+      div.className = 'form-row-4';
+      div.style.cssText = 'margin-bottom:10px;align-items:end';
+      div.innerHTML = '<div class="form-group"><label>Number</label><input type="text" class="edit-input" id="pcStatNum_' + count + '" value=""></div>' +
+        '<div class="form-group"><label>Suffix</label><input type="text" class="edit-input" id="pcStatSuffix_' + count + '" value="+" style="max-width:70px"></div>' +
+        '<div class="form-group"><label>Label</label><input type="text" class="edit-input" id="pcStatLabel_' + count + '" value=""></div>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeStatRow(' + count + ')" style="margin-bottom:4px"><i class="fas fa-times"></i></button>';
+      container.appendChild(div);
+    }
+
+    function removeStatRow(index) {
+      document.getElementById('pcStatNum_' + index).parentElement.parentElement.remove();
+    }
+
+    function collectStatsFromForm() {
+      const rows = document.querySelectorAll('#pcStatsList > div');
+      const stats = [];
+      rows.forEach(row => {
+        const numInput = row.querySelector('input[id^="pcStatNum_"]');
+        const suffixInput = row.querySelector('input[id^="pcStatSuffix_"]');
+        const labelInput = row.querySelector('input[id^="pcStatLabel_"]');
+        if (numInput && labelInput) {
+          stats.push({
+            number: numInput.value.trim(),
+            suffix: suffixInput ? suffixInput.value.trim() : '+',
+            label: labelInput.value.trim()
+          });
+        }
+      });
+      return stats;
+    }
+
+    async function savePageContent() {
+      const stats = collectStatsFromForm();
+      const content = {
+        heroTitle: document.getElementById('pcHeroTitle').value.trim(),
+        heroSubtitle: document.getElementById('pcHeroSubtitle').value.trim(),
+        aboutTitle: document.getElementById('pcAboutTitle').value.trim(),
+        aboutDescription: document.getElementById('pcAboutDesc').value.trim(),
+        stats: stats,
+        social: {
+          instagram: document.getElementById('pcInsta').value.trim(),
+          linkedin: document.getElementById('pcLinkedin').value.trim(),
+          email: document.getElementById('pcEmail').value.trim()
+        },
+        footerText: document.getElementById('pcFooter').value.trim()
+      };
+      setPageContent(content);
+      await db.collection(COLLECTIONS.pageContent).doc('main').set(content);
+      showToast('Page content updated.', 'success');
+    }
+
+    // ========== SEED DEFAULTS (first admin only) ==========
+    async function seedDefaultData() {
+      const COLLECTION_NAMES = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
+      // Read all existing + write everything in one batch
+      const snapshots = await Promise.all(COLLECTION_NAMES.map(name => db.collection(name).get()));
+      const batch = db.batch();
+      snapshots.forEach(snap => snap.docs.forEach(d => batch.delete(d.ref)));
+
+      const SEED_CORE = [
+        { name:'Mariam Alqam', role:'Core Team Member', photo:'', order:0 },
+        { name:'Ahmad Mahareeq', role:'Research Coordinator', photo:'', order:1 },
+        { name:'Asmaa Sarama', role:'Core Team Member', photo:'', order:2 },
+        { name:'Hala Salem', role:'Core Team Member', photo:'', order:3 },
+        { name:'Husam Abu Dawood', role:'Core Team Member', photo:'', order:4 },
+        { name:'Weam Shalabi', role:'Core Team Member', photo:'', order:5 }
+      ];
+      const SEED_ACTIVE = [
+        'Ayham Slimi','Hala Zahaika','Hamzeh Safadi','Lana Helal','Lubna Abusamra',
+        'Qais Salahat','Renad Omar Ali Atwan','Salma Abuallan','Sarah Ayyad',
+        'Shahad Abu Ahmad','Wisam Alrai','Yazan AlHabil','Yazeed Awawdeh','Zaineh Saleh'
+      ].map((n, i) => ({ name: n, role: '', photo: '', order: i }));
+      const SEED_ACTIVITIES = [
+        { title:"International Women's Day", date:'March 8, 2025', time:'', place:'Online via Zoom', shortDescription:'Organized 2 inspiring sessions.', fullDescription:'Two inspiring sessions celebrating women in ophthalmology.', photos:[], order:0 },
+        { title:'World Optometry Day', date:'March 27, 2025', time:'', place:'Online via Zoom', shortDescription:'Two sessions on optometry.', fullDescription:'Exploring optometry-ophthalmology collaboration.', photos:[], order:1 }
+      ];
+      const SEED_NEWS = [
+        { title:'Research Achievements', description:'Latest research acceptances and publications from our team.', mainPhoto:'', extraPhotos:[], order:0 }
+      ];
+
+      SEED_CORE.forEach(item => batch.set(db.collection(COLLECTIONS.coreTeam).doc(), { ...item, id: Date.now().toString() + Math.random() }));
+      SEED_ACTIVE.forEach(item => batch.set(db.collection(COLLECTIONS.activeTeam).doc(), { ...item, id: Date.now().toString() + Math.random() }));
+      SEED_ACTIVITIES.forEach(item => batch.set(db.collection(COLLECTIONS.activities).doc(), { ...item, id: Date.now().toString() + Math.random() }));
+      SEED_NEWS.forEach(item => batch.set(db.collection(COLLECTIONS.news).doc(), { ...item, id: Date.now().toString() + Math.random() }));
+      batch.set(db.collection(COLLECTIONS.pageContent).doc('main'), DEFAULT_PAGE_CONTENT);
+      // Preserve the current admin in the batch so security rules allow it
+      if (currentAdmin && currentAdmin.email) {
+        batch.set(db.collection(COLLECTIONS.admins).doc(currentAdmin.email), currentAdmin);
+      }
+      await batch.commit();
+    }
+
+    // ========== ADMIN MANAGEMENT ==========
+    function renderAdmins() {
+      const container = document.getElementById('adminsList');
+      if (!container) return;
+      const data = session[COLLECTIONS.admins] || [];
+      if (!data.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-users-cog"></i><p>No admins.</p></div>';
+        return;
+      }
+      container.innerHTML = data.map(a => `
+        <div class="glass-card item-card">
+          <div class="item-info">
+            <h4>${a.email}</h4>
+            <p>${a.isMain ? '<span style="color:var(--purple);font-weight:600">Main Admin</span>' : 'Admin'}</p>
+          </div>
+          <div class="item-actions">
+            ${a.isMain ? '' : '<button class="btn btn-danger btn-sm" onclick="removeAdmin(\'' + a.email + '\')"><i class="fas fa-user-minus"></i> Remove Access</button>'}
+          </div>
+        </div>`).join('');
+    }
+
+    async function addAdmin() {
+      const email = document.getElementById('newAdminEmail').value.trim().toLowerCase();
+      if (!email) { showToast('Please enter an email address.', 'error'); return; }
+      const admins = session[COLLECTIONS.admins] || [];
+      if (admins.find(a => a.email === email)) { showToast('Admin with this email already exists.', 'error'); return; }
+      try {
+        await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: false });
+        admins.push({ email, isMain: false });
+        session[COLLECTIONS.admins] = admins;
+        document.getElementById('newAdminEmail').value = '';
+        renderAdmins();
+        showToast('Admin added. They sign up with their own password on first login.', 'success');
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function removeAdmin(email) {
+      if (!confirm('Remove admin access for ' + email + '?')) return;
+      try {
+        await db.collection(COLLECTIONS.admins).doc(email).delete();
+        session[COLLECTIONS.admins] = (session[COLLECTIONS.admins] || []).filter(a => a.email !== email);
+        renderAdmins();
+        showToast('Admin access removed.', 'success');
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function handleLogout() {
+      loggedIn = false;
+      currentAdmin = null;
+      auth.signOut();
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('loginPage').style.display = 'flex';
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginError').textContent = '';
+    }
+
+    // ========== SAVE / CANCEL ==========
+    async function saveAll() {
+      const COLLECTION_NAMES = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
+      showToast('Saving changes...', '');
+      try {
+        for (const name of COLLECTION_NAMES) {
+          try {
+            await saveCollection(name);
+          } catch (e) {
+            showToast('Save failed on "' + name + '": ' + e.message, 'error');
+            return;
+          }
+        }
+        await db.collection(COLLECTIONS.pageContent).doc('main').set(session[COLLECTIONS.pageContent] || DEFAULT_PAGE_CONTENT);
+        if (currentAdmin && currentAdmin.email) {
+          await db.collection(COLLECTIONS.admins).doc(currentAdmin.email).set(currentAdmin);
+        }
+        renderAll();
+        showToast('All changes saved to website.', 'success');
+      } catch (err) {
+        showToast('Save failed: ' + err.message, 'error');
+      }
+    }
+
+    function cancelAll() {
+      document.querySelectorAll('.add-form input[type="text"], .add-form input[type="date"], .add-form input[type="url"], .add-form textarea').forEach(el => el.value = '');
+      document.querySelectorAll('.add-form input[type="file"]').forEach(el => el.value = '');
+      document.querySelectorAll('.photo-previews').forEach(el => el.innerHTML = '');
+      Object.keys(pendingPhotos).forEach(k => delete pendingPhotos[k]);
+      Object.keys(editing).forEach(k => { editing[k] = null; });
+      loadAllFromFirestore().then(() => {
+        renderAll();
+        setupSortable();
+        showToast('Changes discarded. Reloaded from Firestore.', 'success');
+      });
+    }
+
+    async function loadAll() {
+      await loadAllFromFirestore();
+      renderAll();
+      setupSortable();
+      loadPageContentForm();
+      renderAdmins();
+    }
+
+    // Allow Enter on last form fields to submit
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.activeElement) {
+        const id = document.activeElement.id;
+        if (id === 'coreRole') { addTeamMember('core'); e.preventDefault(); }
+        else if (id === 'activeRole') { addTeamMember('active'); e.preventDefault(); }
+        else if (id === 'actFull') { addActivity(); e.preventDefault(); }
+        else if (id === 'evRegLink') { addEvent(); e.preventDefault(); }
+        else if (id === 'newsDesc') { addNews(); e.preventDefault(); }
+        else if (id === 'newAdminEmail') { addAdmin(); e.preventDefault(); }
+      }
+    });
+  </script>
+</body>
+</html>
