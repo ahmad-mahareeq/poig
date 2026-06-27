@@ -1252,16 +1252,14 @@
     function initCrop(img) {
       const container = document.getElementById('cropContainer');
       const box = document.getElementById('cropBox');
-      const rect = img.getBoundingClientRect();
-      const imgW = img.naturalWidth;
-      const imgH = img.naturalHeight;
-      // Default crop box: 80% of the image, centered
-      const cw = Math.min(rect.width * 0.8, imgW);
-      const ch = Math.min(rect.height * 0.8, imgH);
-      const cx = (rect.width - cw) / 2;
-      const cy = (rect.height - ch) / 2;
-      box.style.left = cx + 'px';
-      box.style.top = cy + 'px';
+      const cr = container.getBoundingClientRect();
+      const ir = img.getBoundingClientRect();
+      const cw = ir.width * 0.8;
+      const ch = ir.height * 0.8;
+      const cx = (ir.width - cw) / 2;
+      const cy = (ir.height - ch) / 2;
+      box.style.left = (ir.left - cr.left + cx) + 'px';
+      box.style.top = (ir.top - cr.top + cy) + 'px';
       box.style.width = cw + 'px';
       box.style.height = ch + 'px';
     }
@@ -1287,15 +1285,19 @@
       const box = document.getElementById('cropBox');
       const container = document.getElementById('cropContainer');
       if (!cropCallback) return;
-      const scaleX = img.naturalWidth / img.getBoundingClientRect().width;
-      const scaleY = img.naturalHeight / img.getBoundingClientRect().height;
-      const r = container.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      const ir = img.getBoundingClientRect();
+      const scaleX = img.naturalWidth / ir.width;
+      const scaleY = img.naturalHeight / ir.height;
       const bx = box.offsetLeft;
       const by = box.offsetTop;
       const bw = parseFloat(box.style.width);
       const bh = parseFloat(box.style.height);
-      const sx = Math.round(bx * scaleX);
-      const sy = Math.round(by * scaleY);
+      // Position relative to the image (not the container)
+      const relX = bx - (ir.left - cr.left);
+      const relY = by - (ir.top - cr.top);
+      const sx = Math.max(0, Math.round(relX * scaleX));
+      const sy = Math.max(0, Math.round(relY * scaleY));
       const sw = Math.round(bw * scaleX);
       const sh = Math.round(bh * scaleY);
       const canvas = document.createElement('canvas');
@@ -1360,12 +1362,29 @@
       return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
     }
 
-    function existingPhotoPreviewHTML(photoPath, folder) {
+    function existingPhotoPreviewHTML(photoPath, folder, onCropCallback) {
       const name = photoPath.split('/').pop();
+      const cropBtn = onCropCallback
+        ? '<button class="btn-crop" onclick="loadAndCropExisting(\'' + photoPath + '\',' + onCropCallback + ')"><i class="fas fa-crop-alt"></i> Crop</button>'
+        : '';
       return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not placed yet</span>\'">' +
         '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
         '<span style="font-size:0.75rem;color:#888;">' + name + '</span> ' +
-        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a></div></div>';
+        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' + cropBtn + '</div></div>';
+    }
+
+    function loadAndCropExisting(src, callback) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        const b64 = c.toDataURL('image/jpeg', 0.92);
+        openCrop(b64, callback);
+      };
+      img.onerror = function() { showToast('Could not load image for cropping.', 'error'); };
+      img.src = src;
     }
 
     function renderTeam(containerId, data, storageKey) {
@@ -1388,7 +1407,7 @@
                   <label>Photo</label>
                   <input type="file" accept="image/*" onchange="previewSingle(event,'edit_${m.id}_photo','team')">
                   <div class="photo-previews" id="edit_${m.id}_photo">
-                    ${m.photo ? existingPhotoPreviewHTML(m.photo, 'team') : ''}
+                    ${m.photo ? existingPhotoPreviewHTML(m.photo, 'team', 'function(c){previewSingleCrop(\'edit_' + m.id + '_photo\',\'photo\',c)}') : ''}
                   </div>
                 </div>
               </div>
