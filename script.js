@@ -291,8 +291,26 @@ function renderPageContent() {
 
   const contactEmail = document.getElementById('contactEmail');
   if (contactEmail && c.social && c.social.email) {
-    contactEmail.href = 'mailto:' + c.social.email;
     contactEmail.innerHTML = '<i class="fas fa-envelope"></i> ' + c.social.email;
+    contactEmail.onclick = function(e) {
+      e.preventDefault();
+      const email = c.social.email;
+      navigator.clipboard.writeText(email).then(() => {
+        let badge = contactEmail.querySelector('.copy-badge');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'copy-badge';
+          badge.textContent = 'Copied!';
+          contactEmail.appendChild(badge);
+        }
+        badge.classList.remove('show');
+        void badge.offsetWidth;
+        badge.classList.add('show');
+        setTimeout(() => badge.classList.remove('show'), 1500);
+      }).catch(() => {
+        window.open('mailto:' + email);
+      });
+    };
   }
 
   const footerText = document.getElementById('footerText');

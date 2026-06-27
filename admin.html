@@ -822,6 +822,7 @@
           <div class="form-group"><label>Photos</label><input type="file" id="actPhotos" accept="image/*" multiple onchange="previewMultiple(event, 'actPhotosPreview', 'activities')"></div>
           <div class="photo-previews" id="actPhotosPreview"></div>
           <button class="btn btn-primary btn-sm" onclick="addActivity()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Activity</button>
+          <button class="btn btn-outline btn-sm" onclick="clearAddForm('panel-activities')" style="margin-top:8px"><i class="fas fa-times"></i> Cancel</button>
         </div>
         <div class="items-list" id="activitiesList"></div>
       </div>
@@ -840,6 +841,7 @@
           <div class="form-group"><label>Description</label><textarea id="evDesc" placeholder="Event description"></textarea></div>
           <div class="form-group"><label>Registration Link</label><input type="url" id="evRegLink" placeholder="https://forms.google.com/..."></div>
           <button class="btn btn-primary btn-sm" onclick="addEvent()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Event</button>
+          <button class="btn btn-outline btn-sm" onclick="clearAddForm('panel-events')" style="margin-top:8px"><i class="fas fa-times"></i> Cancel</button>
         </div>
         <div class="items-list" id="eventsList"></div>
       </div>
@@ -858,6 +860,7 @@
            <div class="form-group"><label>Extra Photos</label><input type="file" id="newsExtraPhotos" accept="image/*" multiple onchange="previewMultiple(event, 'newsExtraPreview', 'news')"></div>
           <div class="photo-previews" id="newsExtraPreview"></div>
           <button class="btn btn-primary btn-sm" onclick="addNews()" style="margin-top:8px"><i class="fas fa-plus"></i> Add News</button>
+          <button class="btn btn-outline btn-sm" onclick="clearAddForm('panel-news')" style="margin-top:8px"><i class="fas fa-times"></i> Cancel</button>
         </div>
         <div class="items-list" id="newsList"></div>
       </div>
@@ -1173,8 +1176,56 @@
       document.getElementById('panel-' + tab).classList.add('active');
     }
 
+    function clearAddForm(containerId) {
+      const c = document.querySelector('#' + containerId + ' > .add-form');
+      if (c) {
+        c.querySelectorAll('input:not([type]), input[type="text"], input[type="date"], input[type="url"], textarea').forEach(el => el.value = '');
+        c.querySelectorAll('input[type="file"]').forEach(el => el.value = '');
+        c.querySelectorAll('.photo-previews').forEach(el => el.innerHTML = '');
+      }
+    }
+
+    function deleteExistingTeamPhoto(storageKey, itemId) {
+      const data = getData(storageKey);
+      const item = data.find(x => x.id === itemId);
+      if (item) {
+        item.photo = null;
+        setData(storageKey, data);
+        renderAll();
+      }
+    }
+
+    function deleteExistingArrayPhoto(storageKey, itemId, field, index) {
+      const data = getData(storageKey);
+      const item = data.find(x => x.id === itemId);
+      if (item && item[field] && item[field][index] !== undefined) {
+        item[field].splice(index, 1);
+        setData(storageKey, data);
+        renderAll();
+      }
+    }
+
     // ========== PHOTO PREVIEW ==========
     const pendingPhotos = {};
+
+    function deletePendingPhoto(containerId, idx) {
+      const arr = pendingPhotos[containerId];
+      if (!arr) return;
+      if (idx === undefined) {
+        delete pendingPhotos[containerId];
+        const container = document.getElementById(containerId);
+        if (container) container.innerHTML = '';
+      } else if (Array.isArray(arr)) {
+        arr.splice(idx, 1);
+        const container = document.getElementById(containerId);
+        if (container) {
+          const previews = container.querySelectorAll('.photo-preview');
+          if (previews[idx]) previews[idx].remove();
+          previews.forEach((p, i) => p.dataset.photoIdx = i);
+        }
+        if (arr.length === 0) delete pendingPhotos[containerId];
+      }
+    }
 
     function previewSingle(e, containerId, folder) {
       const container = document.getElementById(containerId);
@@ -1190,21 +1241,11 @@
           '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
           '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
           '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
-          '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewSingleCrop(\'' + containerId + '\',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+          '<button class="btn btn-danger btn-sm" onclick="deletePendingPhoto(\'' + containerId + '\')"><i class="fas fa-trash"></i></button></div>';
         container.appendChild(div);
         pendingPhotos[containerId] = { data: b64, name: file.name };
       };
       reader.readAsDataURL(file);
-    }
-
-    function previewSingleCrop(containerId, fileName, cropped) {
-      pendingPhotos[containerId] = { data: cropped, name: fileName };
-      const container = document.getElementById(containerId);
-      if (container) {
-        const img = container.querySelector('img');
-        if (img) img.src = cropped;
-      }
-      closeCrop();
     }
 
     function previewMultiple(e, containerId, folder) {
@@ -1231,7 +1272,7 @@
                 '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
                 '<span style="font-size:0.75rem;color:#888;">' + r.name + '</span> ' +
                 '<a href="' + r.data + '" download="' + r.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
-                '<button class="btn-crop" onclick="openCrop(\'' + r.data + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + r.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+                '<button class="btn btn-danger btn-sm" onclick="deletePendingPhoto(\'' + containerId + '\',' + idx + ')"><i class="fas fa-trash"></i></button></div>';
               container.appendChild(div);
             });
             pendingPhotos[containerId] = results;
@@ -1240,16 +1281,6 @@
         };
         reader.readAsDataURL(file);
       });
-    }
-
-    function previewMultipleCrop(containerId, idx, fileName, cropped) {
-      const arr = pendingPhotos[containerId];
-      if (arr && arr[idx]) arr[idx] = { data: cropped, name: fileName };
-      const container = document.getElementById(containerId);
-      if (container) {
-        const imgs = container.querySelectorAll('img');
-        if (imgs[idx]) imgs[idx].src = cropped;
-      }
     }
 
     function getPendingSingle(id) {
@@ -1432,29 +1463,15 @@
       return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
     }
 
-    function existingPhotoPreviewHTML(photoPath, folder, onCropCallback) {
+    function existingPhotoPreviewHTML(photoPath, folder, onDelete) {
       const name = photoPath.split('/').pop();
-      const cropBtn = onCropCallback
-        ? '<button class="btn-crop" onclick="loadAndCropExisting(\'' + photoPath + '\',' + onCropCallback + ')"><i class="fas fa-crop-alt"></i> Crop</button>'
+      const delBtn = onDelete
+        ? '<button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:0.75rem" onclick="' + onDelete.replace(/"/g,'&quot;') + '"><i class="fas fa-trash"></i></button>'
         : '';
       return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not placed yet</span>\'">' +
         '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
         '<span style="font-size:0.75rem;color:#888;">' + name + '</span> ' +
-        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' + cropBtn + '</div></div>';
-    }
-
-    function loadAndCropExisting(src, callback) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = function() {
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
-        c.getContext('2d').drawImage(img, 0, 0);
-        const b64 = c.toDataURL('image/jpeg', 0.92);
-        openCrop(b64, callback);
-      };
-      img.onerror = function() { showToast('Could not load image for cropping.', 'error'); };
-      img.src = src;
+        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' + delBtn + '</div></div>';
     }
 
     function renderTeam(containerId, data, storageKey) {
@@ -1477,7 +1494,7 @@
                   <label>Photo</label>
                   <input type="file" accept="image/*" onchange="previewSingle(event,'edit_${m.id}_photo','team')">
                   <div class="photo-previews" id="edit_${m.id}_photo">
-                    ${m.photo ? existingPhotoPreviewHTML(m.photo, 'team', 'function(c){previewSingleCrop(\'edit_' + m.id + '_photo\',\'photo\',c)}') : ''}
+                    ${m.photo ? existingPhotoPreviewHTML(m.photo, 'team', "deleteExistingTeamPhoto('" + storageKey + "','" + m.id + "')") : ''}
                   </div>
                 </div>
               </div>
@@ -1529,8 +1546,8 @@
                 <div class="form-group" style="margin-top:8px">
                   <label>Photos</label>
                   <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${a.id}_photos','activities')">
-                  <div class="photo-previews" id="edit_${a.id}_photos">
-                    ${(a.photos && a.photos.length) ? a.photos.map(p => existingPhotoPreviewHTML(p, 'activities')).join('') : ''}
+                  <div class="photo-previews photo-sortable" id="edit_${a.id}_photos">
+                    ${(a.photos && a.photos.length) ? a.photos.map((p, idx) => existingPhotoPreviewHTML(p, 'activities', "deleteExistingArrayPhoto('" + COLLECTIONS.activities + "','" + a.id + "','photos'," + idx + ")")).join('') : ''}
                   </div>
                 </div>
               </div>
@@ -1619,15 +1636,15 @@
                  <div class="form-group" style="margin-top:8px">
                   <label>Main Photos</label>
                   <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${n.id}_mainphotos','news')">
-                  <div class="photo-previews" id="edit_${n.id}_mainphotos">
-                    ${(n.mainPhotos && n.mainPhotos.length) ? n.mainPhotos.map(p => existingPhotoPreviewHTML(p, 'news')).join('') : n.mainPhoto ? existingPhotoPreviewHTML(n.mainPhoto, 'news') : ''}
+                  <div class="photo-previews photo-sortable" id="edit_${n.id}_mainphotos">
+                    ${(n.mainPhotos && n.mainPhotos.length) ? n.mainPhotos.map((p, idx) => existingPhotoPreviewHTML(p, 'news', "deleteExistingArrayPhoto('" + COLLECTIONS.news + "','" + n.id + "','mainPhotos'," + idx + ")")).join('') : n.mainPhoto ? existingPhotoPreviewHTML(n.mainPhoto, 'news', "deleteExistingArrayPhoto('" + COLLECTIONS.news + "','" + n.id + "','mainPhotos',0)") : ''}
                   </div>
                 </div>
                 <div class="form-group">
                   <label>Extra Photos</label>
                   <input type="file" accept="image/*" multiple onchange="previewMultiple(event,'edit_${n.id}_extraphotos','news')">
-                  <div class="photo-previews" id="edit_${n.id}_extraphotos">
-                    ${(n.extraPhotos && n.extraPhotos.length) ? n.extraPhotos.map(p => existingPhotoPreviewHTML(p, 'news')).join('') : ''}
+                  <div class="photo-previews photo-sortable" id="edit_${n.id}_extraphotos">
+                    ${(n.extraPhotos && n.extraPhotos.length) ? n.extraPhotos.map((p, idx) => existingPhotoPreviewHTML(p, 'news', "deleteExistingArrayPhoto('" + COLLECTIONS.news + "','" + n.id + "','extraPhotos'," + idx + ")")).join('') : ''}
                   </div>
                 </div>
               </div>
@@ -1661,6 +1678,13 @@
       renderActivities();
       renderEvents();
       renderNews();
+      setupEditPhotoSortable();
+    }
+
+    function setupEditPhotoSortable() {
+      document.querySelectorAll('.item-card .photo-sortable').forEach(el => {
+        if (el.id) makePhotoSortable(el.id);
+      });
     }
 
     function setupSortable() {
