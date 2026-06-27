@@ -1054,7 +1054,16 @@
             const adminDoc = await db.collection(COLLECTIONS.admins).doc(email).get();
             if (adminDoc.exists) {
               // Invited admin creating their account for the first time
-              userCred = await auth.createUserWithEmailAndPassword(email, password);
+              try {
+                userCred = await auth.createUserWithEmailAndPassword(email, password);
+              } catch (createErr) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                  errorEl.textContent = 'Invalid email or password.';
+                } else {
+                  errorEl.textContent = createErr.message;
+                }
+                return;
+              }
               currentAdmin = adminDoc.data();
               loggedIn = true;
               enterDashboard();
