@@ -11,7 +11,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
   <style>
     :root {
@@ -1154,11 +1153,20 @@
     // ========== PHOTO UPLOAD ==========
     const pendingPhotos = {};
 
-    async function uploadToStorage(file, pathPrefix) {
-      const path = pathPrefix + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const ref = storage.ref(path);
-      await ref.put(file);
-      return await ref.getDownloadURL();
+    function compressImage(dataURL, maxW, quality) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = function() {
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = h * maxW / w; w = maxW; }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', quality));
+        };
+        img.src = dataURL;
+      });
     }
 
     function showPreviewImg(container, src, fileName, containerId, idx, isMultiple) {
@@ -1174,47 +1182,48 @@
       container.appendChild(div);
     }
 
-    function previewSingle(e, containerId, folder) {
+    function previewSingle(e, containerId) {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(ev) {
+      reader.onload = async function(ev) {
         const b64 = ev.target.result;
-        showPreviewImg(container, b64, file.name, containerId, 0, false);
-        pendingPhotos[containerId] = { file: file, data: b64 };
+        const compressed = await compressImage(b64, 800, 0.7);
+        showPreviewImg(container, compressed, file.name, containerId, 0, false);
+        pendingPhotos[containerId] = compressed;
       };
       reader.readAsDataURL(file);
     }
 
     function previewSingleCrop(containerId, fileName, cropped) {
-      const blob = dataURLToBlob(cropped);
-      pendingPhotos[containerId] = { file: blob, data: cropped };
-      const container = document.getElementById(containerId);
-      if (container) {
-        const img = container.querySelector('img');
-        if (img) img.src = cropped;
-      }
-      closeCrop();
+      compressImage(cropped, 800, 0.7).then(compressed => {
+        pendingPhotos[containerId] = compressed;
+        const container = document.getElementById(containerId);
+        if (container) {
+          const img = container.querySelector('img');
+          if (img) img.src = compressed;
+        }
+        closeCrop();
+      });
     }
 
-    function previewMultiple(e, containerId, folder) {
+    function previewMultiple(e, containerId) {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
       const files = Array.from(e.target.files);
       if (!files.length) return;
       const results = [];
-      const fileArr = [];
       files.forEach((file, i) => {
         const reader = new FileReader();
-        reader.onload = function(ev) {
+        reader.onload = async function(ev) {
           const b64 = ev.target.result;
-          results[i] = b64;
-          fileArr[i] = file;
-          showPreviewImg(container, b64, file.name, containerId, i, true);
+          const compressed = await compressImage(b64, 800, 0.7);
+          results[i] = compressed;
+          showPreviewImg(container, compressed, file.name, containerId, i, true);
           if (results.filter(r => r !== undefined).length === files.length) {
-            pendingPhotos[containerId] = fileArr.map((f, idx) => ({ file: f, data: results[idx] }));
+            pendingPhotos[containerId] = results;
           }
         };
         reader.readAsDataURL(file);
@@ -1222,39 +1231,27 @@
     }
 
     function previewMultipleCrop(containerId, idx, fileName, cropped) {
-      const blob = dataURLToBlob(cropped);
-      const arr = pendingPhotos[containerId];
-      if (arr && arr[idx]) arr[idx] = { file: blob, data: cropped };
-      const container = document.getElementById(containerId);
-      if (container) {
-        const imgs = container.querySelectorAll('img');
-        if (imgs[idx]) imgs[idx].src = cropped;
-      }
-      closeCrop();
+      compressImage(cropped, 800, 0.7).then(compressed => {
+        const arr = pendingPhotos[containerId];
+        if (arr && arr[idx]) arr[idx] = compressed;
+        const container = document.getElementById(containerId);
+        if (container) {
+          const imgs = container.querySelectorAll('img');
+          if (imgs[idx]) imgs[idx].src = compressed;
+        }
+        closeCrop();
+      });
     }
 
-    function dataURLToBlob(dataURL) {
-      const parts = dataURL.split(',');
-      const mime = parts[0].match(/:(.*?);/)[1];
-      const bytes = atob(parts[1]);
-      const ab = new ArrayBuffer(bytes.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < bytes.length; i++) ia[i] = bytes.charCodeAt(i);
-      return new Blob([ab], { type: mime });
-    }
-
-    async function getPendingSingle(id) {
+    function getPendingSingle(id) {
       const val = pendingPhotos[id];
       delete pendingPhotos[id];
-      if (!val) return null;
-      const url = await uploadToStorage(val.file, 'photos');
-      return url;
+      return val || null;
     }
-    async function getPendingMultiple(id) {
+    function getPendingMultiple(id) {
       const val = pendingPhotos[id];
       delete pendingPhotos[id];
-      if (!val || !val.length) return [];
-      return await Promise.all(val.map(v => uploadToStorage(v.file, 'photos')));
+      return val || [];
     }
 
     // ========== CROP TOOL ==========
@@ -1373,7 +1370,8 @@
     }
 
     function existingPhotoPreviewHTML(photoPath) {
-      const name = (photoPath || '').split('/').pop() || 'photo';
+      const isDataURL = photoPath && photoPath.startsWith('data:');
+      const name = isDataURL ? 'photo' : (photoPath || '').split('/').pop() || 'photo';
       return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not found</span>\'">' +
         '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><span style="font-size:0.75rem;color:#888;">' + name + '</span></div></div>';
     }
