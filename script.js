@@ -197,9 +197,7 @@ let siteData = {};
 async function fetchCollection(name) {
   try {
     const snapshot = await db.collection(name).get();
-    if (!snapshot.empty) {
-      return snapshot.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
+    return snapshot.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
   } catch (e) { /* Firestore unavailable, use fallback */ }
   return null;
 }
@@ -208,6 +206,7 @@ async function fetchPageContent() {
   try {
     const doc = await db.collection(COLLECTIONS.pageContent).doc('main').get();
     if (doc.exists) return doc.data();
+    return {};
   } catch (e) { /* Firestore unavailable */ }
   return null;
 }
