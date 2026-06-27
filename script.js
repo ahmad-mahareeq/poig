@@ -405,10 +405,7 @@ function renderNews() {
     const mains = n.mainPhotos && n.mainPhotos.length ? n.mainPhotos : (n.mainPhoto ? [n.mainPhoto] : []);
     return `
     <div class="glass-card news-card${i === 0 ? ' active' : ''}">
-      ${mains.length
-        ? `<img src="${mains[0]}" alt="${n.title}" class="news-card-main-photo" onerror="this.style.display='none'">`
-        : `<div class="news-placeholder-main"><i class="fas fa-newspaper"></i></div>`
-      }
+      ${mains.length ? `<img src="${mains[0]}" alt="${n.title}" class="news-card-main-photo" onerror="this.style.display='none'">` : ''}
       ${mains.length > 1 ? `<div class="news-card-thumbs">${mains.slice(1).map(p => `<img src="${p}" alt="" onerror="this.style.display='none'">`).join('')}</div>` : ''}
       <div class="news-card-body">
         <h3>${n.title}</h3>

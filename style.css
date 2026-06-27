@@ -910,17 +910,6 @@ nav.scrolled .nav-toggle span { background: white; }
   margin-bottom: 0;
 }
 
-.news-placeholder-main {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, rgba(66, 27, 97, 0.06), rgba(254, 111, 3, 0.04));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #bbb;
-  font-size: 2rem;
-}
-
 .news-card:hover .news-card-main-photo {
   transform: scale(1.02);
 }
