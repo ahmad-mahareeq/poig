@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
   <style>
     :root {
@@ -984,8 +985,8 @@
 
     function stripPhotoData(items) {
       return (items || []).map(item => {
-        const { photoData, photosData, mainPhotoData, mainPhotosData, extraPhotosData, ...rest } = item;
-        return rest;
+        const { photoData, photosData, mainPhotoData, mainPhotosData, extraPhotosData, order, ...rest } = item;
+        return { ...rest, order: order ?? 0 };
       });
     }
 
@@ -1150,8 +1151,28 @@
       document.getElementById('panel-' + tab).classList.add('active');
     }
 
-    // ========== PHOTO PREVIEW ==========
+    // ========== PHOTO UPLOAD ==========
     const pendingPhotos = {};
+
+    async function uploadToStorage(file, pathPrefix) {
+      const path = pathPrefix + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const ref = storage.ref(path);
+      await ref.put(file);
+      return await ref.getDownloadURL();
+    }
+
+    function showPreviewImg(container, src, fileName, containerId, idx, isMultiple) {
+      const div = document.createElement('div');
+      div.className = 'photo-preview';
+      const cropFn = isMultiple
+        ? 'openCrop(\'' + src + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + fileName.replace(/'/g, "\\'") + '\',c)})'
+        : 'openCrop(\'' + src + '\',function(c){previewSingleCrop(\'' + containerId + '\',\'' + fileName.replace(/'/g, "\\'") + '\',c)})';
+      div.innerHTML = '<img src="' + src + '" alt="preview">' +
+        '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+        '<span style="font-size:0.75rem;color:#888;">' + fileName + '</span> ' +
+        '<button class="btn-crop" onclick="' + cropFn + '"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+      container.appendChild(div);
+    }
 
     function previewSingle(e, containerId, folder) {
       const container = document.getElementById(containerId);
@@ -1161,21 +1182,15 @@
       const reader = new FileReader();
       reader.onload = function(ev) {
         const b64 = ev.target.result;
-        const div = document.createElement('div');
-        div.className = 'photo-preview';
-        div.innerHTML = '<img src="' + b64 + '" alt="preview">' +
-          '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-          '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
-          '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
-          '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewSingleCrop(\'' + containerId + '\',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
-        container.appendChild(div);
-        pendingPhotos[containerId] = { data: b64, name: file.name };
+        showPreviewImg(container, b64, file.name, containerId, 0, false);
+        pendingPhotos[containerId] = { file: file, data: b64 };
       };
       reader.readAsDataURL(file);
     }
 
     function previewSingleCrop(containerId, fileName, cropped) {
-      pendingPhotos[containerId] = { data: cropped, name: fileName };
+      const blob = dataURLToBlob(cropped);
+      pendingPhotos[containerId] = { file: blob, data: cropped };
       const container = document.getElementById(containerId);
       if (container) {
         const img = container.querySelector('img');
@@ -1190,24 +1205,16 @@
       const files = Array.from(e.target.files);
       if (!files.length) return;
       const results = [];
-      let loaded = 0;
-      files.forEach(file => {
+      const fileArr = [];
+      files.forEach((file, i) => {
         const reader = new FileReader();
         reader.onload = function(ev) {
           const b64 = ev.target.result;
-          const idx = results.length;
-          const div = document.createElement('div');
-          div.className = 'photo-preview';
-          div.innerHTML = '<img src="' + b64 + '" alt="preview">' +
-            '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-            '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
-            '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
-            '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
-          container.appendChild(div);
-          results.push({ data: b64, name: file.name });
-          loaded++;
-          if (loaded === files.length) {
-            pendingPhotos[containerId] = results;
+          results[i] = b64;
+          fileArr[i] = file;
+          showPreviewImg(container, b64, file.name, containerId, i, true);
+          if (results.filter(r => r !== undefined).length === files.length) {
+            pendingPhotos[containerId] = fileArr.map((f, idx) => ({ file: f, data: results[idx] }));
           }
         };
         reader.readAsDataURL(file);
@@ -1215,24 +1222,39 @@
     }
 
     function previewMultipleCrop(containerId, idx, fileName, cropped) {
+      const blob = dataURLToBlob(cropped);
       const arr = pendingPhotos[containerId];
-      if (arr && arr[idx]) arr[idx] = { data: cropped, name: fileName };
+      if (arr && arr[idx]) arr[idx] = { file: blob, data: cropped };
       const container = document.getElementById(containerId);
       if (container) {
         const imgs = container.querySelectorAll('img');
         if (imgs[idx]) imgs[idx].src = cropped;
       }
+      closeCrop();
     }
 
-    function getPendingSingle(id) {
-      const val = pendingPhotos[id];
-      delete pendingPhotos[id];
-      return val || null;
+    function dataURLToBlob(dataURL) {
+      const parts = dataURL.split(',');
+      const mime = parts[0].match(/:(.*?);/)[1];
+      const bytes = atob(parts[1]);
+      const ab = new ArrayBuffer(bytes.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < bytes.length; i++) ia[i] = bytes.charCodeAt(i);
+      return new Blob([ab], { type: mime });
     }
-    function getPendingMultiple(id) {
+
+    async function getPendingSingle(id) {
       const val = pendingPhotos[id];
       delete pendingPhotos[id];
-      return val || [];
+      if (!val) return null;
+      const url = await uploadToStorage(val.file, 'photos');
+      return url;
+    }
+    async function getPendingMultiple(id) {
+      const val = pendingPhotos[id];
+      delete pendingPhotos[id];
+      if (!val || !val.length) return [];
+      return await Promise.all(val.map(v => uploadToStorage(v.file, 'photos')));
     }
 
     // ========== CROP TOOL ==========
@@ -1350,12 +1372,10 @@
       return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
     }
 
-    function existingPhotoPreviewHTML(photoPath, folder) {
-      const name = photoPath.split('/').pop();
-      return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not placed yet</span>\'">' +
-        '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-        '<span style="font-size:0.75rem;color:#888;">' + name + '</span> ' +
-        '<a href="' + photoPath + '" download="' + name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a></div></div>';
+    function existingPhotoPreviewHTML(photoPath) {
+      const name = (photoPath || '').split('/').pop() || 'photo';
+      return '<div class="photo-preview"><img src="' + photoPath + '" alt="" onerror="this.parentElement.innerHTML=\'<span style=color:#999;font-size:0.8rem>Not found</span>\'">' +
+        '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><span style="font-size:0.75rem;color:#888;">' + name + '</span></div></div>';
     }
 
     function renderTeam(containerId, data, storageKey) {
@@ -1646,27 +1666,25 @@
 
     // ========== CRUD ==========
 
-    function addTeamMember(type) {
+    async function addTeamMember(type) {
       const prefix = type === 'core' ? 'core' : 'active';
       const name = document.getElementById(prefix + 'Name').value.trim();
       const role = document.getElementById(prefix + 'Role').value.trim();
-      const pending = getPendingSingle(prefix + 'PhotoPreview');
+      const photo = await getPendingSingle(prefix + 'PhotoPreview');
       if (!name) { showToast('Please enter a name.', 'error'); return; }
       const key = type === 'core' ? COLLECTIONS.coreTeam : COLLECTIONS.activeTeam;
       const data = getData(key);
-      const photo = pending ? 'team/' + pending.name : '';
-      const photoData = pending ? pending.data : '';
-      data.push({ id: Date.now().toString(), name, role, photo, photoData, order: data.length });
+      data.push({ id: Date.now().toString(), name, role, photo, order: data.length });
       setData(key, data);
       document.getElementById(prefix + 'Name').value = '';
       document.getElementById(prefix + 'Role').value = '';
       document.getElementById(prefix + 'Photo').value = '';
       document.getElementById(prefix + 'PhotoPreview').innerHTML = '';
       renderAll();
-      showToast('Member added. Download the photo and save to team/ folder.', 'success');
+      showToast('Member added.', 'success');
     }
 
-    function saveEditTeamMember(type, id) {
+    async function saveEditTeamMember(type, id) {
       const key = type === 'core' ? COLLECTIONS.coreTeam : COLLECTIONS.activeTeam;
       const data = getData(key);
       const idx = data.findIndex(m => m.id === id);
@@ -1674,9 +1692,9 @@
       const name = document.getElementById('edit_' + id + '_name').value.trim();
       const role = document.getElementById('edit_' + id + '_role').value.trim();
       if (!name) { showToast('Please enter a name.', 'error'); return; }
-      const pending = getPendingSingle('edit_' + id + '_photo');
+      const photo = await getPendingSingle('edit_' + id + '_photo');
       data[idx] = { ...data[idx], name, role };
-      if (pending) { data[idx].photo = 'team/' + pending.name; data[idx].photoData = pending.data; }
+      if (photo) data[idx].photo = photo;
       setData(key, data);
       editing[type] = null;
       renderAll();
@@ -1688,29 +1706,27 @@
       renderAll();
     }
 
-    function addActivity() {
+    async function addActivity() {
       const title = document.getElementById('actTitle').value.trim();
       const date = document.getElementById('actDate').value;
       const time = document.getElementById('actTime').value.trim();
       const place = document.getElementById('actPlace').value.trim();
       const shortDescription = document.getElementById('actShort').value.trim();
       const fullDescription = document.getElementById('actFull').value.trim();
-      const pending = getPendingMultiple('actPhotosPreview');
       if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const photos = await getPendingMultiple('actPhotosPreview');
       const key = COLLECTIONS.activities;
       const data = getData(key);
-      const photos = pending.length ? pending.map(p => 'activities/' + p.name) : [];
-      const photosData = pending.length ? pending.map(p => p.data) : [];
-      data.push({ id: Date.now().toString(), title, date, time, place, shortDescription, fullDescription, photos, photosData, order: data.length });
+      data.push({ id: Date.now().toString(), title, date, time, place, shortDescription, fullDescription, photos, order: data.length });
       setData(key, data);
       ['actTitle','actDate','actTime','actPlace','actShort','actFull'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('actPhotos').value = '';
       document.getElementById('actPhotosPreview').innerHTML = '';
       renderAll();
-      showToast('Activity added. Download photos and save to activities/ folder.', 'success');
+      showToast('Activity added.', 'success');
     }
 
-    function saveEditActivity(id) {
+    async function saveEditActivity(id) {
       const data = getData(COLLECTIONS.activities);
       const idx = data.findIndex(a => a.id === id);
       if (idx === -1) return;
@@ -1721,9 +1737,9 @@
       const shortDescription = document.getElementById('edit_act_' + id + '_short').value.trim();
       const fullDescription = document.getElementById('edit_act_' + id + '_full').value.trim();
       if (!title) { showToast('Please enter a title.', 'error'); return; }
-      const pending = getPendingMultiple('edit_' + id + '_photos');
+      const photos = await getPendingMultiple('edit_' + id + '_photos');
       data[idx] = { ...data[idx], title, date, time, place, shortDescription, fullDescription };
-      if (pending.length) { data[idx].photos = pending.map(p => 'activities/' + p.name); data[idx].photosData = pending.map(p => p.data); }
+      if (photos.length) data[idx].photos = photos;
       setData(COLLECTIONS.activities, data);
       editing.activity = null;
       renderAll();
@@ -1775,19 +1791,15 @@
       renderAll();
     }
 
-    function addNews() {
+    async function addNews() {
       const title = document.getElementById('newsTitle').value.trim();
       const description = document.getElementById('newsDesc').value.trim();
-      const mainPending = getPendingMultiple('newsMainPreview');
-      const extraPending = getPendingMultiple('newsExtraPreview');
       if (!title) { showToast('Please enter a title.', 'error'); return; }
+      const mainPhotos = await getPendingMultiple('newsMainPreview');
+      const extraPhotos = await getPendingMultiple('newsExtraPreview');
       const key = COLLECTIONS.news;
       const data = getData(key);
-      const mainPhotos = mainPending.length ? mainPending.map(p => 'news/' + p.name) : [];
-      const mainPhotosData = mainPending.length ? mainPending.map(p => p.data) : [];
-      const extraPhotos = extraPending.length ? extraPending.map(p => 'news/' + p.name) : [];
-      const extraPhotosData = extraPending.length ? extraPending.map(p => p.data) : [];
-      data.push({ id: Date.now().toString(), title, description, mainPhotos, mainPhotosData, mainPhoto: mainPhotos[0] || '', mainPhotoData: mainPhotosData[0] || '', extraPhotos, extraPhotosData, order: data.length });
+      data.push({ id: Date.now().toString(), title, description, mainPhotos, mainPhoto: mainPhotos[0] || '', extraPhotos, order: data.length });
       setData(key, data);
       document.getElementById('newsTitle').value = '';
       document.getElementById('newsDesc').value = '';
@@ -1796,21 +1808,21 @@
       document.getElementById('newsMainPreview').innerHTML = '';
       document.getElementById('newsExtraPreview').innerHTML = '';
       renderAll();
-      showToast('News added. Download photos and save to news/ folder.', 'success');
+      showToast('News added.', 'success');
     }
 
-    function saveEditNews(id) {
+    async function saveEditNews(id) {
       const data = getData(COLLECTIONS.news);
       const idx = data.findIndex(n => n.id === id);
       if (idx === -1) return;
       const title = document.getElementById('edit_news_' + id + '_title').value.trim();
       const description = document.getElementById('edit_news_' + id + '_desc').value.trim();
       if (!title) { showToast('Please enter a title.', 'error'); return; }
-      const mainPending = getPendingMultiple('edit_' + id + '_mainphotos');
-      const extraPending = getPendingMultiple('edit_' + id + '_extraphotos');
+      const mainPhotos = await getPendingMultiple('edit_' + id + '_mainphotos');
+      const extraPhotos = await getPendingMultiple('edit_' + id + '_extraphotos');
       data[idx] = { ...data[idx], title, description };
-      if (mainPending.length) { data[idx].mainPhotos = mainPending.map(p => 'news/' + p.name); data[idx].mainPhotosData = mainPending.map(p => p.data); data[idx].mainPhoto = data[idx].mainPhotos[0] || ''; data[idx].mainPhotoData = data[idx].mainPhotosData[0] || ''; }
-      if (extraPending.length) { data[idx].extraPhotos = extraPending.map(p => 'news/' + p.name); data[idx].extraPhotosData = extraPending.map(p => p.data); }
+      if (mainPhotos.length) { data[idx].mainPhotos = mainPhotos; data[idx].mainPhoto = mainPhotos[0] || ''; }
+      if (extraPhotos.length) data[idx].extraPhotos = extraPhotos;
       setData(COLLECTIONS.news, data);
       editing.news = null;
       renderAll();
