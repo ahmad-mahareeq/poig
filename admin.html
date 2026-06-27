@@ -499,6 +499,19 @@
       pointer-events: none;
       transition: opacity 0.1s ease;
     }
+    .photo-preview { transition: transform 0.15s ease, opacity 0.15s ease; }
+    .photo-preview[draggable="true"] { cursor: default; }
+    .photo-preview.dragging { opacity: 0.35; }
+    .photo-drag-handle {
+      cursor: grab;
+      color: #ccc;
+      padding: 0 6px 0 0;
+      font-size: 0.9rem;
+      user-select: none;
+      display: inline;
+    }
+    .photo-drag-handle:hover { color: var(--purple); }
+    .photo-preview.drag-over { border-color: var(--orange) !important; }
 
     /* Crop Modal */
     .crop-modal {
@@ -1201,23 +1214,28 @@
       if (!files.length) return;
       const results = [];
       let loaded = 0;
-      files.forEach(file => {
+      files.forEach((file, i) => {
         const reader = new FileReader();
         reader.onload = function(ev) {
           const b64 = ev.target.result;
-          const idx = results.length;
-          const div = document.createElement('div');
-          div.className = 'photo-preview';
-          div.innerHTML = '<img src="' + b64 + '" alt="preview">' +
-            '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-            '<span style="font-size:0.75rem;color:#888;">' + file.name + '</span> ' +
-            '<a href="' + b64 + '" download="' + file.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
-            '<button class="btn-crop" onclick="openCrop(\'' + b64 + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + file.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
-          container.appendChild(div);
-          results.push({ data: b64, name: file.name });
+          results[i] = { data: b64, name: file.name };
           loaded++;
           if (loaded === files.length) {
+            container.innerHTML = '';
+            results.forEach((r, idx) => {
+              const div = document.createElement('div');
+              div.className = 'photo-preview';
+              div.draggable = true;
+              div.dataset.photoIdx = idx;
+              div.innerHTML = '<i class="fas fa-grip-vertical photo-drag-handle"></i><img src="' + r.data + '" alt="preview">' +
+                '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+                '<span style="font-size:0.75rem;color:#888;">' + r.name + '</span> ' +
+                '<a href="' + r.data + '" download="' + r.name + '" class="btn-download"><i class="fas fa-download"></i> Save to ' + folder + '/</a>' +
+                '<button class="btn-crop" onclick="openCrop(\'' + r.data + '\',function(c){previewMultipleCrop(\'' + containerId + '\',' + idx + ',\'' + r.name + '\',c)})"><i class="fas fa-crop-alt"></i> Crop</button></div>';
+              container.appendChild(div);
+            });
             pendingPhotos[containerId] = results;
+            makePhotoSortable(containerId);
           }
         };
         reader.readAsDataURL(file);
@@ -1243,6 +1261,58 @@
       const val = pendingPhotos[id];
       delete pendingPhotos[id];
       return val || [];
+    }
+
+    function makePhotoSortable(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      let draggedEl = null;
+      container.addEventListener('dragstart', e => {
+        const preview = e.target.closest('.photo-preview[draggable]');
+        if (!preview) return;
+        draggedEl = preview;
+        requestAnimationFrame(() => preview.classList.add('dragging'));
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      container.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!draggedEl) return;
+        const target = e.target.closest('.photo-preview:not(.dragging)');
+        if (!target) return;
+        container.querySelectorAll('.photo-preview').forEach(p => p.classList.remove('drag-over'));
+        const rect = target.getBoundingClientRect();
+        const mid = rect.left + rect.width / 2;
+        if (e.clientX < mid) target.classList.add('drag-over');
+        else target.classList.add('drag-over');
+      });
+      container.addEventListener('drop', e => {
+        e.preventDefault();
+        container.querySelectorAll('.photo-preview').forEach(p => p.classList.remove('drag-over'));
+        if (!draggedEl) return;
+        const target = e.target.closest('.photo-preview:not(.dragging)');
+        if (!target || target === draggedEl) return;
+        const rect = target.getBoundingClientRect();
+        const mid = rect.left + rect.width / 2;
+        if (e.clientX < mid) target.parentNode.insertBefore(draggedEl, target);
+        else target.parentNode.insertBefore(draggedEl, target.nextSibling);
+        draggedEl.classList.remove('dragging');
+        // Update pendingPhotos order
+        const arr = pendingPhotos[containerId];
+        if (arr) {
+          const newArr = [];
+          container.querySelectorAll('.photo-preview').forEach(p => {
+            const idx = parseInt(p.dataset.photoIdx);
+            if (!isNaN(idx) && arr[idx]) newArr.push(arr[idx]);
+          });
+          pendingPhotos[containerId] = newArr;
+          // Update dataset indices
+          container.querySelectorAll('.photo-preview').forEach((p, i) => p.dataset.photoIdx = i);
+        }
+      });
+      container.addEventListener('dragend', () => {
+        container.querySelectorAll('.photo-preview').forEach(p => p.classList.remove('dragging', 'drag-over'));
+        draggedEl = null;
+      });
     }
 
     // ========== CROP TOOL ==========
