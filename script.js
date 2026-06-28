@@ -2,32 +2,32 @@
    POIG — Main Script (Firestore + Local Fallback)
    ============================================ */
 
+try {
+
 // --- Nav Scroll Effect ---
 const nav = document.querySelector('nav');
 const navToggle = document.getElementById('navToggle');
 const navLinks = document.querySelector('.nav-links');
 
 window.addEventListener('scroll', () => {
-  const currentScroll = window.scrollY;
-  if (currentScroll > 60) {
-    nav.classList.add('scrolled');
-  } else {
-    nav.classList.remove('scrolled');
-  }
+  if (!nav) return;
+  nav.classList.toggle('scrolled', window.scrollY > 60);
 });
 
 // --- Mobile Nav Toggle ---
-navToggle.addEventListener('click', () => {
-  navToggle.classList.toggle('active');
-  navLinks.classList.toggle('active');
-});
-
-document.querySelectorAll('.nav-links a').forEach(link => {
-  link.addEventListener('click', () => {
-    navToggle.classList.remove('active');
-    navLinks.classList.remove('active');
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    navToggle.classList.toggle('active');
+    navLinks.classList.toggle('active');
   });
-});
+
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      navToggle.classList.remove('active');
+      navLinks.classList.remove('active');
+    });
+  });
+}
 
 // --- Intersection Observer for scroll reveals ---
 document.querySelectorAll('.section, .stats-bar').forEach(el => {
@@ -330,8 +330,8 @@ function renderPageContent() {
 }
 
 function renderTeam() {
-  const core = siteData.coreTeam;
-  const active = siteData.activeTeam;
+  const core = Array.isArray(siteData.coreTeam) ? siteData.coreTeam : DEFAULT_DATA.coreTeam;
+  const active = Array.isArray(siteData.activeTeam) ? siteData.activeTeam : DEFAULT_DATA.activeTeam;
 
   const coreGrid = document.getElementById('coreTeamGrid');
   const activeGrid = document.getElementById('activeTeamGrid');
@@ -366,7 +366,7 @@ function teamCardHTML(m) {
 function renderActivities() {
   const grid = document.getElementById('activitiesGrid');
   if (!grid) return;
-  const items = siteData.activities;
+  const items = Array.isArray(siteData.activities) ? siteData.activities : DEFAULT_DATA.activities;
   grid.innerHTML = items.map(a => activityCardHTML(a)).join('');
 
   document.querySelectorAll('[data-expandable]').forEach(card => {
@@ -402,7 +402,7 @@ function activityCardHTML(a) {
 function renderEvents() {
   const grid = document.getElementById('eventsGrid');
   if (!grid) return;
-  const items = siteData.events;
+  const items = Array.isArray(siteData.events) ? siteData.events : DEFAULT_DATA.events;
 
   if (!items.length) {
     grid.innerHTML = `
@@ -429,7 +429,7 @@ function renderEvents() {
 function renderNews() {
   const grid = document.getElementById('newsGrid');
   if (!grid) return;
-  const items = siteData.news;
+  const items = Array.isArray(siteData.news) ? siteData.news : DEFAULT_DATA.news;
 
   grid.innerHTML = items.map((n, i) => {
     const mains = n.mainPhotos && n.mainPhotos.length ? n.mainPhotos : (n.mainPhoto ? [n.mainPhoto] : []);
@@ -579,3 +579,5 @@ function renderAllNow() {
 }
 
 init();
+
+} catch(e) { console.error('POIG init error:', e); }
