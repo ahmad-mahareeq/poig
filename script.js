@@ -194,8 +194,7 @@ const DEFAULT_PAGE_CONTENT = {
 // In-memory data store (populated from Firestore or defaults)
 let siteData = {};
 
-// localStorage cache layer (prevents fallback to defaults on transient errors)
-// Never caches empty arrays so a failed fetch still falls back to DEFAULT_DATA
+// localStorage cache layer
 function cachePut(key, data) {
   try {
     if (data && Array.isArray(data) && data.length === 0) {
@@ -212,46 +211,34 @@ function cacheGet(key) {
   } catch (e) { return null; }
 }
 
+// Loads instantly from cache or defaults, then Firestore syncs in background
+function loadFromCacheOrDefaults() {
+  siteData.coreTeam = cacheGet(COLLECTIONS.coreTeam) || DEFAULT_DATA.coreTeam;
+  siteData.activeTeam = cacheGet(COLLECTIONS.activeTeam) || DEFAULT_DATA.activeTeam;
+  siteData.activities = cacheGet(COLLECTIONS.activities) || DEFAULT_DATA.activities;
+  siteData.events = cacheGet(COLLECTIONS.events) || DEFAULT_DATA.events;
+  siteData.news = cacheGet(COLLECTIONS.news) || DEFAULT_DATA.news;
+  siteData.pageContent = cacheGet('pageContent') || DEFAULT_PAGE_CONTENT;
+}
+
+function cacheSiteData() {
+  cachePut(COLLECTIONS.coreTeam, siteData.coreTeam);
+  cachePut(COLLECTIONS.activeTeam, siteData.activeTeam);
+  cachePut(COLLECTIONS.activities, siteData.activities);
+  cachePut(COLLECTIONS.events, siteData.events);
+  cachePut(COLLECTIONS.news, siteData.news);
+  cachePut('pageContent', siteData.pageContent);
+}
+
 async function fetchCollection(name) {
-  try {
-    const snapshot = await db.collection(name).get();
-    const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
-    cachePut(name, data);
-    return data;
-  } catch (e) { /* Firestore unavailable, use cache */ }
-  const cached = cacheGet(name);
-  return cached && Array.isArray(cached) && cached.length > 0 ? cached : null;
+  const snap = await db.collection(name).get();
+  return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 async function fetchPageContent() {
-  try {
-    const doc = await db.collection(COLLECTIONS.pageContent).doc('main').get();
-    if (doc.exists) {
-      cachePut('pageContent', doc.data());
-      return doc.data();
-    }
-    cachePut('pageContent', {});
-    return {};
-  } catch (e) { /* Firestore unavailable */ }
-  return cacheGet('pageContent');
-}
-
-async function loadSiteData() {
-  const [coreTeam, activeTeam, activities, events, news, pageContent] = await Promise.all([
-    fetchCollection(COLLECTIONS.coreTeam),
-    fetchCollection(COLLECTIONS.activeTeam),
-    fetchCollection(COLLECTIONS.activities),
-    fetchCollection(COLLECTIONS.events),
-    fetchCollection(COLLECTIONS.news),
-    fetchPageContent()
-  ]);
-
-  siteData.coreTeam = coreTeam || DEFAULT_DATA.coreTeam;
-  siteData.activeTeam = activeTeam || DEFAULT_DATA.activeTeam;
-  siteData.activities = activities || DEFAULT_DATA.activities;
-  siteData.events = events || DEFAULT_DATA.events;
-  siteData.news = news || DEFAULT_DATA.news;
-  siteData.pageContent = pageContent || DEFAULT_PAGE_CONTENT;
+  const doc = await db.collection(COLLECTIONS.pageContent).doc('main').get();
+  if (doc.exists) return doc.data();
+  return {};
 }
 
 function formatHeroTitle(text) {
@@ -367,7 +354,7 @@ function teamCardHTML(m) {
   return `
     <div class="glass-card team-card">
       <div class="team-avatar">
-        ${m.photo ? `<img src="${m.photo}" alt="${m.name}" class="team-photo" onerror="this.style.display='none'">` : ''}
+        ${m.photo ? `<img src="${m.photo}" alt="${m.name}" class="team-photo" loading="lazy" onerror="this.style.display='none'">` : ''}
         <div class="avatar-placeholder" style="background: ${color};">${initials}</div>
       </div>
       <h4>${m.name}</h4>
@@ -404,7 +391,7 @@ function activityCardHTML(a) {
         ${a.fullDescription ? `<p>${a.fullDescription}</p>` : ''}
         ${a.photos && a.photos.length ? `
           <div class="activity-photos">
-            ${a.photos.map(p => `<img src="${p}" class="activity-photo" alt="" onerror="this.style.display='none'">`).join('')}
+            ${a.photos.map(p => `<img src="${p}" class="activity-photo" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}
           </div>
         ` : ''}
       </div>
@@ -448,14 +435,14 @@ function renderNews() {
     const mains = n.mainPhotos && n.mainPhotos.length ? n.mainPhotos : (n.mainPhoto ? [n.mainPhoto] : []);
     return `
     <div class="glass-card news-card${i === 0 ? ' active' : ''}">
-      ${mains.length ? `<img src="${mains[0]}" alt="${n.title}" class="news-card-main-photo" onerror="this.style.display='none'">` : ''}
-      ${mains.length > 1 ? `<div class="news-card-thumbs">${mains.slice(1).map(p => `<img src="${p}" alt="" onerror="this.style.display='none'">`).join('')}</div>` : ''}
+      ${mains.length ? `<img src="${mains[0]}" alt="${n.title}" class="news-card-main-photo" loading="lazy" onerror="this.style.display='none'">` : ''}
+      ${mains.length > 1 ? `<div class="news-card-thumbs">${mains.slice(1).map(p => `<img src="${p}" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>` : ''}
       <div class="news-card-body">
         <h3>${n.title}</h3>
         <p>${n.description}</p>
         ${n.extraPhotos && n.extraPhotos.length ? `
           <div class="activity-photos" style="margin-top:16px;">
-            ${n.extraPhotos.map(p => `<img src="${p}" class="activity-photo" alt="" onerror="this.style.display='none'">`).join('')}
+            ${n.extraPhotos.map(p => `<img src="${p}" class="activity-photo" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}
           </div>
         ` : ''}
       </div>
@@ -555,13 +542,40 @@ document.addEventListener('keydown', e => {
 // ========================================
 
 async function init() {
-  await loadSiteData();
+  // Phase 1 — instant render from cache or defaults
+  loadFromCacheOrDefaults();
+  renderAllNow();
+
+  // Phase 2 — background Firestore sync
+  try {
+    const [coreTeam, activeTeam, activities, events, news, pageContent] = await Promise.all([
+      fetchCollection(COLLECTIONS.coreTeam).catch(() => null),
+      fetchCollection(COLLECTIONS.activeTeam).catch(() => null),
+      fetchCollection(COLLECTIONS.activities).catch(() => null),
+      fetchCollection(COLLECTIONS.events).catch(() => null),
+      fetchCollection(COLLECTIONS.news).catch(() => null),
+      fetchPageContent().catch(() => null)
+    ]);
+    const gotData = coreTeam || activeTeam || activities || events || news || pageContent;
+    if (gotData) {
+      if (coreTeam) siteData.coreTeam = coreTeam;
+      if (activeTeam) siteData.activeTeam = activeTeam;
+      if (activities) siteData.activities = activities;
+      if (events) siteData.events = events;
+      if (news) siteData.news = news;
+      if (pageContent) siteData.pageContent = pageContent;
+      cacheSiteData();
+      renderAllNow();
+    }
+  } catch (e) { /* Firestore unavailable */ }
+}
+
+function renderAllNow() {
   renderPageContent();
   renderTeam();
   renderActivities();
   renderEvents();
   renderNews();
-  console.log('POIG website loaded \u2728');
 }
 
 init();
