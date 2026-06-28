@@ -194,6 +194,21 @@ const DEFAULT_PAGE_CONTENT = {
 // In-memory data store (populated from Firestore or defaults)
 let siteData = {};
 
+// Firestore via REST API (no SDK dependency)
+const FS_BASE = 'https://firestore.googleapis.com/v1/projects/poig-website/databases/(default)/documents';
+const FS_KEY = 'AIzaSyDSjK2bk_WN7A_ec4x58UmqnDQmQ-wJaMM';
+
+function fsVal(v) {
+  const t = Object.keys(v)[0];
+  if (t === 'stringValue') return v.stringValue;
+  if (t === 'integerValue') return parseInt(v.integerValue, 10);
+  if (t === 'doubleValue') return parseFloat(v.doubleValue);
+  if (t === 'booleanValue') return v.booleanValue;
+  if (t === 'arrayValue') return (v.arrayValue.values || []).map(fsVal);
+  if (t === 'mapValue') { const o = {}; for (const [k, f] of Object.entries(v.mapValue.fields || {})) o[k] = fsVal(f); return o; }
+  return null;
+}
+
 // localStorage cache layer
 function cachePut(key, data) {
   try {
@@ -231,14 +246,23 @@ function cacheSiteData() {
 }
 
 async function fetchCollection(name) {
-  const snap = await db.collection(name).get();
-  return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const res = await fetch(FS_BASE + '/' + name + '?key=' + FS_KEY);
+  const data = await res.json();
+  if (!data.documents) return [];
+  return data.documents.map(d => {
+    const item = { id: d.name.split('/').pop() };
+    for (const [k, v] of Object.entries(d.fields || {})) item[k] = fsVal(v);
+    return item;
+  }).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 async function fetchPageContent() {
-  const doc = await db.collection(COLLECTIONS.pageContent).doc('main').get();
-  if (doc.exists) return doc.data();
-  return {};
+  const res = await fetch(FS_BASE + '/pageContent/main?key=' + FS_KEY);
+  if (res.status === 404) return {};
+  const data = await res.json();
+  const obj = {};
+  for (const [k, v] of Object.entries(data.fields || {})) obj[k] = fsVal(v);
+  return obj;
 }
 
 function formatHeroTitle(text) {
