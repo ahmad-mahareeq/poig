@@ -11,6 +11,12 @@ const firebaseConfig = {
   measurementId: "G-26S0DJVK79"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+let db = null;
+let auth = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  auth = typeof firebase.auth === 'function' ? firebase.auth() : null;
+} catch (e) {
+  console.error('Firebase init failed:', e);
+}
