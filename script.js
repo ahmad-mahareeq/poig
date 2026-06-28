@@ -195,8 +195,15 @@ const DEFAULT_PAGE_CONTENT = {
 let siteData = {};
 
 // localStorage cache layer (prevents fallback to defaults on transient errors)
+// Never caches empty arrays so a failed fetch still falls back to DEFAULT_DATA
 function cachePut(key, data) {
-  try { localStorage.setItem('poig_' + key, JSON.stringify(data)); } catch (e) { /* quota */ }
+  try {
+    if (data && Array.isArray(data) && data.length === 0) {
+      localStorage.removeItem('poig_' + key);
+    } else {
+      localStorage.setItem('poig_' + key, JSON.stringify(data));
+    }
+  } catch (e) { /* quota */ }
 }
 function cacheGet(key) {
   try {
@@ -212,7 +219,8 @@ async function fetchCollection(name) {
     cachePut(name, data);
     return data;
   } catch (e) { /* Firestore unavailable, use cache */ }
-  return cacheGet(name);
+  const cached = cacheGet(name);
+  return cached && Array.isArray(cached) && cached.length > 0 ? cached : null;
 }
 
 async function fetchPageContent() {
@@ -222,6 +230,7 @@ async function fetchPageContent() {
       cachePut('pageContent', doc.data());
       return doc.data();
     }
+    cachePut('pageContent', {});
     return {};
   } catch (e) { /* Firestore unavailable */ }
   return cacheGet('pageContent');

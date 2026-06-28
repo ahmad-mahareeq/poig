@@ -734,11 +734,11 @@
         <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div class="form-error" id="loginError"></div>
-      <button class="btn btn-primary login-btn" onclick="handleLogin()">
-        <i class="fas fa-sign-in-alt"></i> Sign In
+      <button class="btn btn-primary login-btn" id="loginBtn" onclick="handleLogin()">
+        <i class="fas fa-sign-in-alt"></i> <span>Sign In</span>
       </button>
       <div style="text-align:center;margin-top:16px">
-        <a href="index.html" class="return-link"><i class="fas fa-arrow-left"></i> Return to Website</a>
+        <a href="index.html" class="return-link" onclick="showToast('Loading website...','')"><i class="fas fa-arrow-left"></i> Return to Website</a>
       </div>
     </div>
   </div>
@@ -754,7 +754,7 @@
       <div class="header-actions">
         <button class="btn btn-success btn-sm" onclick="saveAll()"><i class="fas fa-save"></i> Save Changes</button>
         <button class="btn btn-outline btn-sm" onclick="cancelAll()"><i class="fas fa-undo"></i> Cancel</button>
-        <a href="index.html" class="btn btn-secondary btn-sm"><i class="fas fa-external-link-alt"></i> Return to Website</a>
+        <a href="index.html" class="btn btn-secondary btn-sm" onclick="showToast('Loading website...','')"><i class="fas fa-external-link-alt"></i> Return to Website</a>
         <button class="btn btn-secondary btn-sm" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
       </div>
     </div>
@@ -1040,11 +1040,13 @@
       const password = document.getElementById('loginPassword').value.trim();
       const errorEl = document.getElementById('loginError');
       errorEl.textContent = '';
-
+      const loginBtn = document.getElementById('loginBtn');
       if (!email || !password) {
         errorEl.textContent = 'Please enter both email and password.';
         return;
       }
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Signing in...';
 
       try {
         // Tarpit: slow down brute force attempts
@@ -1078,6 +1080,7 @@
                 } else {
                   errorEl.textContent = createErr.message;
                 }
+                resetLoginBtn();
                 return;
               }
               currentAdmin = adminDoc.data();
@@ -1105,6 +1108,7 @@
           }
           await auth.signOut();
           errorEl.textContent = 'You are not authorized as an admin.';
+          resetLoginBtn();
           return;
         }
 
@@ -1120,6 +1124,12 @@
           errorEl.textContent = err.message;
         }
       }
+      resetLoginBtn();
+    }
+
+    function resetLoginBtn() {
+      const loginBtn = document.getElementById('loginBtn');
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <span>Sign In</span>'; }
     }
 
     async function enterDashboard() {
