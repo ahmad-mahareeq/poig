@@ -194,21 +194,37 @@ const DEFAULT_PAGE_CONTENT = {
 // In-memory data store (populated from Firestore or defaults)
 let siteData = {};
 
+// localStorage cache layer (prevents fallback to defaults on transient errors)
+function cachePut(key, data) {
+  try { localStorage.setItem('poig_' + key, JSON.stringify(data)); } catch (e) { /* quota */ }
+}
+function cacheGet(key) {
+  try {
+    const v = localStorage.getItem('poig_' + key);
+    return v ? JSON.parse(v) : null;
+  } catch (e) { return null; }
+}
+
 async function fetchCollection(name) {
   try {
     const snapshot = await db.collection(name).get();
-    return snapshot.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
-  } catch (e) { /* Firestore unavailable, use fallback */ }
-  return null;
+    const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    cachePut(name, data);
+    return data;
+  } catch (e) { /* Firestore unavailable, use cache */ }
+  return cacheGet(name);
 }
 
 async function fetchPageContent() {
   try {
     const doc = await db.collection(COLLECTIONS.pageContent).doc('main').get();
-    if (doc.exists) return doc.data();
+    if (doc.exists) {
+      cachePut('pageContent', doc.data());
+      return doc.data();
+    }
     return {};
   } catch (e) { /* Firestore unavailable */ }
-  return null;
+  return cacheGet('pageContent');
 }
 
 async function loadSiteData() {
