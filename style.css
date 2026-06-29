@@ -1376,7 +1376,6 @@ footer p {
   /* Disable expensive backdrop-filter on mobile — use solid backgrounds instead */
   .glass-card,
   nav,
-  .hero-visual,
   [class*="glass"] {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
