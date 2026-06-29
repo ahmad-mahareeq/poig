@@ -194,9 +194,8 @@ const DEFAULT_PAGE_CONTENT = {
 // In-memory data store (populated from Firestore or defaults)
 let siteData = {};
 
-// Firestore via REST API (no SDK dependency)
-const FS_BASE = 'https://firestore.googleapis.com/v1/projects/poig-website/databases/(default)/documents';
-const FS_KEY = 'AIzaSyDSjK2bk_WN7A_ec4x58UmqnDQmQ-wJaMM';
+// Firestore via same-origin proxy (bypasses Safari ITP)
+const FS_PROXY = '/api/firestore';
 
 function fsVal(v) {
   const t = Object.keys(v)[0];
@@ -245,24 +244,40 @@ function cacheSiteData() {
   cachePut('pageContent', siteData.pageContent);
 }
 
-async function fetchCollection(name) {
-  const res = await fetch(FS_BASE + '/' + name + '?key=' + FS_KEY);
-  const data = await res.json();
-  if (!data.documents) return [];
-  return data.documents.map(d => {
-    const item = { id: d.name.split('/').pop() };
-    for (const [k, v] of Object.entries(d.fields || {})) item[k] = fsVal(v);
-    return item;
-  }).sort((a, b) => (a.order || 0) - (b.order || 0));
+async function fetchCollection(name, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${FS_PROXY}?collection=${name}`, {
+      signal: controller.signal
+    });
+    const data = await res.json();
+    if (!data.documents) return [];
+    return data.documents.map(d => {
+      const item = { id: d.name.split('/').pop() };
+      for (const [k, v] of Object.entries(d.fields || {})) item[k] = fsVal(v);
+      return item;
+    }).sort((a, b) => (a.order || 0) - (b.order || 0));
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-async function fetchPageContent() {
-  const res = await fetch(FS_BASE + '/pageContent/main?key=' + FS_KEY);
-  if (res.status === 404) return {};
-  const data = await res.json();
-  const obj = {};
-  for (const [k, v] of Object.entries(data.fields || {})) obj[k] = fsVal(v);
-  return obj;
+async function fetchPageContent(timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${FS_PROXY}?collection=pageContent&doc=main`, {
+      signal: controller.signal
+    });
+    if (res.status === 404) return {};
+    const data = await res.json();
+    const obj = {};
+    for (const [k, v] of Object.entries(data.fields || {})) obj[k] = fsVal(v);
+    return obj;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function formatHeroTitle(text) {
