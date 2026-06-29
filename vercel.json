@@ -1,6 +1,5 @@
 {
   "framework": null,
-  "outputDirectory": ".",
   "headers": [
     {
       "source": "/(.*\\.js|.*\\.css|.*\\.png|.*\\.jpg|.*\\.webp)",
