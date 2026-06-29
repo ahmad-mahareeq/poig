@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "node build.js",
+  "buildCommand": "bash build.sh",
   "headers": [
     {
       "source": "/(.*\\.js|.*\\.css|.*\\.png|.*\\.jpg|.*\\.webp)",
