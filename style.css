@@ -1265,9 +1265,9 @@ footer p {
     width: clamp(180px, 35vw, 280px);
   }
 
-  .hero-glow {
+  /*.hero-glow {
     display: none !important;
-  }
+  }*/
 
   .about-grid {
     grid-template-columns: 1fr;
@@ -1412,10 +1412,11 @@ footer p {
     background: rgba(255, 255, 255, 0.92) !important;
   }
 
-  /* Hide hero glow on mobile */
+  /* Hide hero glow on mobile
   .hero-glow {
     display: none !important;
   }
+  */
 
   .hero-logo {
     filter: none !important;
