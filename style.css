@@ -1399,6 +1399,29 @@ footer p {
   .particles span {
     animation: none;
   }
+
+  /* Kill body ambient glows — biggest perf win on iPhone */
+  body::before, body::after {
+    display: none !important;
+  }
+
+  /* Kill stat-item blur (missed previously) */
+  .stat-item {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  /* Kill hero glow animation */
+  .hero-glow {
+    animation: none !important;
+    opacity: 0.4;
+  }
+
+  /* Kill scroll indicator bounce animation */
+  .scroll-indicator {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 480px) {
