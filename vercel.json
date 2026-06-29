@@ -1,5 +1,6 @@
 {
   "framework": null,
+  "buildCommand": "node build.js",
   "headers": [
     {
       "source": "/(.*\\.js|.*\\.css|.*\\.png|.*\\.jpg|.*\\.webp)",
