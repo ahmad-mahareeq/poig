@@ -1412,10 +1412,17 @@ footer p {
     background: rgba(255, 255, 255, 0.92) !important;
   }
 
-  /* Kill hero glow animation */
+  /* Hide hero glow on mobile (was showing as white box) */
   .hero-glow {
-    animation: none !important;
-    opacity: 0.4;
+    display: none !important;
+  }
+
+  .hero-visual {
+    overflow: hidden;
+  }
+
+  .hero-logo {
+    transform: scale(1.15);
   }
 
   /* Kill scroll indicator bounce animation */
