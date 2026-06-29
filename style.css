@@ -1422,7 +1422,8 @@ footer p {
   }
 
   .hero-logo {
-    clip-path: inset(10%);
+    clip-path: inset(8%);
+    filter: none !important;
   }
 
   /* Kill scroll indicator bounce animation */
