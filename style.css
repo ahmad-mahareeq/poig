@@ -1257,6 +1257,8 @@ footer p {
 
   .hero-visual {
     order: -1;
+    justify-self: center;
+    width: fit-content;
   }
 
   .hero-logo {
