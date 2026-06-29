@@ -367,6 +367,7 @@ nav.scrolled .nav-toggle span { background: white; }
   justify-content: center;
   align-items: center;
   position: relative;
+  background-color: transparent;
 }
 
 .hero-glow {
