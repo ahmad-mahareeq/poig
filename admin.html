@@ -952,6 +952,170 @@
       pageContent: 'pageContent'
     };
 
+    // ========== FIRESTORE REST API HELPERS ==========
+    const PROJECT = 'poig-website';
+    const API_KEY = 'AIzaSyDSjK2bk_WN7A_ec4x58UmqnDQmQ-wJaMM';
+    const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+    const AUTH_BASE = 'https://identitytoolkit.googleapis.com/v1';
+    const TOKEN_REFRESH_URL = 'https://securetoken.googleapis.com/v1/token';
+
+    function fsVal(v) {
+      if (v.stringValue !== undefined) return v.stringValue;
+      if (v.integerValue !== undefined) return parseInt(v.integerValue);
+      if (v.booleanValue !== undefined) return v.booleanValue;
+      if (v.arrayValue && v.arrayValue.values) return v.arrayValue.values.map(fsVal);
+      if (v.mapValue && v.mapValue.fields) {
+        const obj = {};
+        for (const [k, fv] of Object.entries(v.mapValue.fields)) obj[k] = fsVal(fv);
+        return obj;
+      }
+      return null;
+    }
+
+    function toFsValue(v) {
+      if (typeof v === 'string') return { stringValue: v };
+      if (typeof v === 'number') return { integerValue: String(Math.floor(v)) };
+      if (typeof v === 'boolean') return { booleanValue: v };
+      if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsValue) } };
+      if (typeof v === 'object' && v !== null) {
+        const fields = {};
+        for (const [k, fv] of Object.entries(v)) fields[k] = toFsValue(fv);
+        return { mapValue: { fields } };
+      }
+      return { nullValue: null };
+    }
+
+    function extractDocId(name) {
+      return name.split('/').pop();
+    }
+
+    async function fetchCollection(name) {
+      const res = await fetch(FS_BASE + '/' + name + '?key=' + API_KEY);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!data.documents) return [];
+      return data.documents.map(d => {
+        const item = { _firebaseId: extractDocId(d.name) };
+        for (const [k, v] of Object.entries(d.fields || {})) item[k] = fsVal(v);
+        return item;
+      }).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    async function fetchDoc(collection, docId) {
+      const res = await fetch(FS_BASE + '/' + collection + '/' + docId + '?key=' + API_KEY);
+      if (res.status === 404) return null;
+      if (!res.ok) return null;
+      const d = await res.json();
+      const item = { _firebaseId: extractDocId(d.name) };
+      for (const [k, v] of Object.entries(d.fields || {})) item[k] = fsVal(v);
+      return item;
+    }
+
+    function buildFields(obj) {
+      const fields = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v !== undefined && v !== null && k !== '_firebaseId') fields[k] = toFsValue(v);
+      }
+      return fields;
+    }
+
+    async function setDoc(collection, docId, data, token) {
+      const url = FS_BASE + '/' + collection + '/' + docId + '?key=' + API_KEY;
+      const fields = buildFields(data);
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err.error && err.error.message) || 'Write failed');
+      }
+    }
+
+    async function deleteDoc(collection, docId, token) {
+      const res = await fetch(FS_BASE + '/' + collection + '/' + docId + '?key=' + API_KEY, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err.error && err.error.message) || 'Delete failed');
+      }
+    }
+
+    async function commitWrites(writes, token) {
+      const res = await fetch(FS_BASE + ':commit?key=' + API_KEY, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ writes })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err.error && err.error.message) || 'Commit failed');
+      }
+    }
+
+    function genDocId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    function docName(c, id) {
+      return `projects/${PROJECT}/databases/(default)/documents/${c}/${id}`;
+    }
+
+    // ========== SESSION PERSISTENCE ==========
+    function saveSession(email, isMain, idToken, refreshToken) {
+      try {
+        localStorage.setItem('poig_admin_email', email);
+        localStorage.setItem('poig_admin_isMain', isMain ? 'true' : 'false');
+        localStorage.setItem('poig_admin_idToken', idToken);
+        localStorage.setItem('poig_admin_refreshToken', refreshToken);
+      } catch (e) {}
+    }
+
+    function clearSession() {
+      try {
+        localStorage.removeItem('poig_admin_email');
+        localStorage.removeItem('poig_admin_isMain');
+        localStorage.removeItem('poig_admin_idToken');
+        localStorage.removeItem('poig_admin_refreshToken');
+      } catch (e) {}
+    }
+
+    function getStoredToken() {
+      try { return localStorage.getItem('poig_admin_idToken'); } catch (e) { return null; }
+    }
+
+    // ========== AUTH REST API ==========
+    async function authSignIn(email, password) {
+      const res = await fetch(AUTH_BASE + '/accounts:signInWithPassword?key=' + API_KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (err.error && err.error.message) || 'UNKNOWN';
+        throw { code: 'auth/' + msg.toLowerCase(), message: msg };
+      }
+      return await res.json();
+    }
+
+    async function authSignUp(email, password) {
+      const res = await fetch(AUTH_BASE + '/accounts:signUp?key=' + API_KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (err.error && err.error.message) || 'UNKNOWN';
+        throw { code: 'auth/' + msg.toLowerCase(), message: msg };
+      }
+      return await res.json();
+    }
+
     let session = {};
     let currentAdmin = null;
     let loggedIn = false;
@@ -979,17 +1143,9 @@
     async function loadAllFromFirestore() {
       const names = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
       const [collections, pageContent, adminsSnap] = await Promise.all([
-        Promise.all(names.map(name =>
-          db.collection(name).get().then(snapshot =>
-            snapshot.empty ? [] : snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id })).sort((a, b) => (a.order || 0) - (b.order || 0))
-          ).catch(() => [])
-        )),
-        db.collection(COLLECTIONS.pageContent).doc('main').get()
-          .then(d => d.exists ? d.data() : DEFAULT_PAGE_CONTENT)
-          .catch(() => DEFAULT_PAGE_CONTENT),
-        db.collection(COLLECTIONS.admins).get()
-          .then(s => s.empty ? [] : s.docs.map(d => d.data()))
-          .catch(() => [])
+        Promise.all(names.map(name => fetchCollection(name).catch(() => []))),
+        fetchCollection(COLLECTIONS.pageContent).then(col => col[0] || DEFAULT_PAGE_CONTENT).catch(() => DEFAULT_PAGE_CONTENT),
+        fetchCollection(COLLECTIONS.admins).catch(() => [])
       ]);
       names.forEach((name, i) => session[name] = collections[i]);
       session[COLLECTIONS.pageContent] = pageContent;
@@ -1004,14 +1160,19 @@
     }
 
     async function saveCollection(name) {
-      const snap = await db.collection(name).get();
-      const batch = db.batch();
-      snap.docs.forEach(d => batch.delete(d.ref));
-      stripPhotoData(session[name]).forEach(item => {
-        const { _firebaseId, ...data } = item;
-        batch.set(db.collection(name).doc(), data);
+      const token = getStoredToken();
+      if (!token) throw new Error('Not authenticated');
+      const existing = await fetchCollection(name).catch(() => []);
+      const writes = [];
+      existing.forEach(doc => {
+        writes.push({ delete: docName(name, doc._firebaseId) });
       });
-      await batch.commit();
+      stripPhotoData(session[name] || []).forEach(item => {
+        const { _firebaseId, ...data } = item;
+        const id = genDocId();
+        writes.push({ update: { name: docName(name, id), fields: buildFields(data) } });
+      });
+      if (writes.length) await commitWrites(writes, token);
     }
 
     function getData(key) {
@@ -1046,33 +1207,34 @@
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Signing in...';
 
       try {
-        // Tarpit: slow down brute force attempts
         await new Promise(r => setTimeout(r, 800));
 
-        let userCred;
+        let userData;
         try {
-          userCred = await auth.signInWithEmailAndPassword(email, password);
+          userData = await authSignIn(email, password);
         } catch (signInErr) {
-          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-            const allAdmins = await db.collection(COLLECTIONS.admins).get();
-            if (allAdmins.empty) {
-              // First ever admin — create account and seed
-              userCred = await auth.createUserWithEmailAndPassword(email, password);
-              await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: true });
-              await seedDefaultData();
+          const code = signInErr.code || '';
+          if (code.indexOf('email_not_found') !== -1 || code.indexOf('invalid_login_credentials') !== -1 || code.indexOf('invalid_password') !== -1) {
+            const allAdmins = await fetchCollection(COLLECTIONS.admins).catch(() => []);
+            if (!allAdmins.length) {
+              userData = await authSignUp(email, password);
+              const idToken = userData.idToken;
+              await setDoc(COLLECTIONS.admins, email, { email, isMain: true }, idToken);
+              await seedDefaultData(idToken);
+              saveSession(email, true, idToken, userData.refreshToken || '');
               currentAdmin = { email, isMain: true };
               loggedIn = true;
               enterDashboard();
               return;
             }
             // Check if this email was invited as admin
-            const adminDoc = await db.collection(COLLECTIONS.admins).doc(email).get();
-            if (adminDoc.exists) {
-              // Invited admin creating their account for the first time
+            const adminDoc = await fetchDoc(COLLECTIONS.admins, email).catch(() => null);
+            if (adminDoc) {
               try {
-                userCred = await auth.createUserWithEmailAndPassword(email, password);
+                userData = await authSignUp(email, password);
               } catch (createErr) {
-                if (createErr.code === 'auth/email-already-in-use') {
+                const cc = createErr.code || '';
+                if (cc.indexOf('email_exists') !== -1) {
                   errorEl.textContent = 'Invalid email or password.';
                 } else {
                   errorEl.textContent = createErr.message;
@@ -1080,7 +1242,8 @@
                 resetLoginBtn();
                 return;
               }
-              currentAdmin = adminDoc.data();
+              saveSession(email, adminDoc.isMain || false, userData.idToken, userData.refreshToken || '');
+              currentAdmin = adminDoc;
               loggedIn = true;
               enterDashboard();
               return;
@@ -1089,36 +1252,37 @@
           throw signInErr;
         }
 
-        // Check if this user is an authorized admin
-        const adminDoc = await db.collection(COLLECTIONS.admins).doc(email).get();
-        if (!adminDoc.exists) {
-          // User exists in Auth but not in admins collection
-          const allAdmins = await db.collection(COLLECTIONS.admins).get();
-          if (allAdmins.empty) {
-            // Rescue: admins collection is empty, promote and seed
-            await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: true });
-            await seedDefaultData();
+        // Normal sign-in: check admin doc
+        const adminDoc = await fetchDoc(COLLECTIONS.admins, email).catch(() => null);
+        if (!adminDoc) {
+          const allAdmins = await fetchCollection(COLLECTIONS.admins).catch(() => []);
+          if (!allAdmins.length) {
+            const idToken = userData.idToken;
+            await setDoc(COLLECTIONS.admins, email, { email, isMain: true }, idToken);
+            await seedDefaultData(idToken);
+            saveSession(email, true, idToken, userData.refreshToken || '');
             currentAdmin = { email, isMain: true };
             loggedIn = true;
             enterDashboard();
             return;
           }
-          await auth.signOut();
           errorEl.textContent = 'You are not authorized as an admin.';
           resetLoginBtn();
           return;
         }
 
-        currentAdmin = adminDoc.data();
+        saveSession(email, adminDoc.isMain || false, userData.idToken, userData.refreshToken || '');
+        currentAdmin = adminDoc;
         loggedIn = true;
         enterDashboard();
       } catch (err) {
-        if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        const code = err.code || '';
+        if (code.indexOf('wrong_password') !== -1 || code.indexOf('email_not_found') !== -1 || code.indexOf('invalid_login_credentials') !== -1 || code.indexOf('invalid_password') !== -1) {
           errorEl.textContent = 'Invalid email or password.';
-        } else if (err.code === 'auth/email-already-in-use') {
+        } else if (code.indexOf('email_exists') !== -1) {
           errorEl.textContent = 'An admin account with this email already exists. Try logging in.';
         } else {
-          errorEl.textContent = err.message;
+          errorEl.textContent = err.message || 'An error occurred.';
         }
       }
       resetLoginBtn();
@@ -1144,14 +1308,40 @@
       showToast('Welcome back!', 'success');
     }
 
-    // Allow Enter key to submit
-    document.addEventListener('DOMContentLoaded', () => {
+    // Session restore on page load + Enter key submit
+    document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('loginPassword').addEventListener('keydown', e => {
         if (e.key === 'Enter') handleLogin();
       });
       document.getElementById('loginEmail').addEventListener('keydown', e => {
         if (e.key === 'Enter') handleLogin();
       });
+
+      try {
+        const email = localStorage.getItem('poig_admin_email');
+        const isMain = localStorage.getItem('poig_admin_isMain') === 'true';
+        const idToken = localStorage.getItem('poig_admin_idToken');
+        const refreshToken = localStorage.getItem('poig_admin_refreshToken');
+        if (email && idToken && refreshToken) {
+          // Try to refresh the token
+          const res = await fetch(TOKEN_REFRESH_URL + '?key=' + API_KEY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            saveSession(email, isMain, data.id_token, data.refresh_token);
+            currentAdmin = { email, isMain };
+            loggedIn = true;
+            enterDashboard();
+          } else {
+            clearSession();
+          }
+        }
+      } catch (e) {
+        clearSession();
+      }
     });
 
     // ========== TOAST ==========
@@ -2036,49 +2226,55 @@
         footerText: document.getElementById('pcFooter').value.trim()
       };
       setPageContent(content);
-      await db.collection(COLLECTIONS.pageContent).doc('main').set(content);
+      const token = getStoredToken();
+      if (!token) { showToast('Session expired. Please log in again.', 'error'); return; }
+      await setDoc(COLLECTIONS.pageContent, 'main', content, token);
       showToast('Page content updated.', 'success');
     }
 
     // ========== SEED DEFAULTS (first admin only) ==========
-    async function seedDefaultData() {
+    async function seedDefaultData(token) {
       const COLLECTION_NAMES = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
-      // Read all existing + write everything in one batch
-      const snapshots = await Promise.all(COLLECTION_NAMES.map(name => db.collection(name).get()));
-      const batch = db.batch();
-      snapshots.forEach(snap => snap.docs.forEach(d => batch.delete(d.ref)));
+      const existing = await Promise.all(COLLECTION_NAMES.map(n => fetchCollection(n).catch(() => [])));
+      const writes = [];
+
+      existing.forEach((docs, i) => {
+        docs.forEach(doc => {
+          writes.push({ delete: docName(COLLECTION_NAMES[i], doc._firebaseId) });
+        });
+      });
 
       const SEED_CORE = [
-        { name:'Mariam Alqam', role:'Core Team Member', photo:'', order:0 },
-        { name:'Ahmad Mahareeq', role:'Research Coordinator', photo:'', order:1 },
-        { name:'Asmaa Sarama', role:'Core Team Member', photo:'', order:2 },
-        { name:'Hala Salem', role:'Core Team Member', photo:'', order:3 },
-        { name:'Husam Abu Dawood', role:'Core Team Member', photo:'', order:4 },
-        { name:'Weam Shalabi', role:'Core Team Member', photo:'', order:5 }
+        { name:'Mariam Alqam', role:'Core Team Member', photo:'', order:0, id: Date.now().toString() + Math.random() },
+        { name:'Ahmad Mahareeq', role:'Research Coordinator', photo:'', order:1, id: Date.now().toString() + Math.random() },
+        { name:'Asmaa Sarama', role:'Core Team Member', photo:'', order:2, id: Date.now().toString() + Math.random() },
+        { name:'Hala Salem', role:'Core Team Member', photo:'', order:3, id: Date.now().toString() + Math.random() },
+        { name:'Husam Abu Dawood', role:'Core Team Member', photo:'', order:4, id: Date.now().toString() + Math.random() },
+        { name:'Weam Shalabi', role:'Core Team Member', photo:'', order:5, id: Date.now().toString() + Math.random() }
       ];
       const SEED_ACTIVE = [
         'Ayham Slimi','Hala Zahaika','Hamzeh Safadi','Lana Helal','Lubna Abusamra',
         'Qais Salahat','Renad Omar Ali Atwan','Salma Abuallan','Sarah Ayyad',
         'Shahad Abu Ahmad','Wisam Alrai','Yazan AlHabil','Yazeed Awawdeh','Zaineh Saleh'
-      ].map((n, i) => ({ name: n, role: '', photo: '', order: i }));
+      ].map((n, i) => ({ name: n, role: '', photo: '', order: i, id: Date.now().toString() + Math.random() }));
       const SEED_ACTIVITIES = [
-        { title:"International Women's Day", date:'March 8, 2025', time:'', place:'Online via Zoom', shortDescription:'Organized 2 inspiring sessions.', fullDescription:'Two inspiring sessions celebrating women in ophthalmology.', photos:[], order:0 },
-        { title:'World Optometry Day', date:'March 27, 2025', time:'', place:'Online via Zoom', shortDescription:'Two sessions on optometry.', fullDescription:'Exploring optometry-ophthalmology collaboration.', photos:[], order:1 }
+        { title:"International Women's Day", date:'March 8, 2025', time:'', place:'Online via Zoom', shortDescription:'Organized 2 inspiring sessions.', fullDescription:'Two inspiring sessions celebrating women in ophthalmology.', photos:[], order:0, id: Date.now().toString() + Math.random() },
+        { title:'World Optometry Day', date:'March 27, 2025', time:'', place:'Online via Zoom', shortDescription:'Two sessions on optometry.', fullDescription:'Exploring optometry-ophthalmology collaboration.', photos:[], order:1, id: Date.now().toString() + Math.random() }
       ];
       const SEED_NEWS = [
-        { title:'Research Achievements', description:'Latest research acceptances and publications from our team.', mainPhoto:'', extraPhotos:[], order:0 }
+        { title:'Research Achievements', description:'Latest research acceptances and publications from our team.', mainPhoto:'', extraPhotos:[], order:0, id: Date.now().toString() + Math.random() }
       ];
 
-      SEED_CORE.forEach(item => batch.set(db.collection(COLLECTIONS.coreTeam).doc(), { ...item, id: Date.now().toString() + Math.random() }));
-      SEED_ACTIVE.forEach(item => batch.set(db.collection(COLLECTIONS.activeTeam).doc(), { ...item, id: Date.now().toString() + Math.random() }));
-      SEED_ACTIVITIES.forEach(item => batch.set(db.collection(COLLECTIONS.activities).doc(), { ...item, id: Date.now().toString() + Math.random() }));
-      SEED_NEWS.forEach(item => batch.set(db.collection(COLLECTIONS.news).doc(), { ...item, id: Date.now().toString() + Math.random() }));
-      batch.set(db.collection(COLLECTIONS.pageContent).doc('main'), DEFAULT_PAGE_CONTENT);
-      // Preserve the current admin in the batch so security rules allow it
+      SEED_CORE.forEach(item => writes.push({ update: { name: docName(COLLECTIONS.coreTeam, genDocId()), fields: buildFields(item) } }));
+      SEED_ACTIVE.forEach(item => writes.push({ update: { name: docName(COLLECTIONS.activeTeam, genDocId()), fields: buildFields(item) } }));
+      SEED_ACTIVITIES.forEach(item => writes.push({ update: { name: docName(COLLECTIONS.activities, genDocId()), fields: buildFields(item) } }));
+      SEED_NEWS.forEach(item => writes.push({ update: { name: docName(COLLECTIONS.news, genDocId()), fields: buildFields(item) } }));
+      writes.push({ update: { name: docName(COLLECTIONS.pageContent, 'main'), fields: buildFields(DEFAULT_PAGE_CONTENT) } });
       if (currentAdmin && currentAdmin.email) {
-        batch.set(db.collection(COLLECTIONS.admins).doc(currentAdmin.email), currentAdmin);
+        writes.push({ update: { name: docName(COLLECTIONS.admins, currentAdmin.email), fields: buildFields(currentAdmin) } });
       }
-      await batch.commit();
+
+      if (writes.length) await commitWrites(writes, token);
     }
 
     // ========== ADMIN MANAGEMENT ==========
@@ -2107,8 +2303,10 @@
       if (!email) { showToast('Please enter an email address.', 'error'); return; }
       const admins = session[COLLECTIONS.admins] || [];
       if (admins.find(a => a.email === email)) { showToast('Admin with this email already exists.', 'error'); return; }
+      const token = getStoredToken();
+      if (!token) { showToast('Session expired. Please log in again.', 'error'); return; }
       try {
-        await db.collection(COLLECTIONS.admins).doc(email).set({ email, isMain: false });
+        await setDoc(COLLECTIONS.admins, email, { email, isMain: false }, token);
         admins.push({ email, isMain: false });
         session[COLLECTIONS.admins] = admins;
         document.getElementById('newAdminEmail').value = '';
@@ -2119,8 +2317,10 @@
 
     async function removeAdmin(email) {
       if (!confirm('Remove admin access for ' + email + '?')) return;
+      const token = getStoredToken();
+      if (!token) { showToast('Session expired. Please log in again.', 'error'); return; }
       try {
-        await db.collection(COLLECTIONS.admins).doc(email).delete();
+        await deleteDoc(COLLECTIONS.admins, email, token);
         session[COLLECTIONS.admins] = (session[COLLECTIONS.admins] || []).filter(a => a.email !== email);
         renderAdmins();
         showToast('Admin access removed.', 'success');
@@ -2130,7 +2330,7 @@
     function handleLogout() {
       loggedIn = false;
       currentAdmin = null;
-      auth.signOut();
+      clearSession();
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('loginPage').style.display = 'flex';
       document.getElementById('loginEmail').value = '';
@@ -2141,6 +2341,8 @@
     // ========== SAVE / CANCEL ==========
     async function saveAll() {
       const COLLECTION_NAMES = [COLLECTIONS.coreTeam, COLLECTIONS.activeTeam, COLLECTIONS.activities, COLLECTIONS.events, COLLECTIONS.news];
+      const token = getStoredToken();
+      if (!token) { showToast('Session expired. Please log in again.', 'error'); return; }
       showToast('Saving changes...', '');
       try {
         for (const name of COLLECTION_NAMES) {
@@ -2151,9 +2353,9 @@
             return;
           }
         }
-        await db.collection(COLLECTIONS.pageContent).doc('main').set(session[COLLECTIONS.pageContent] || DEFAULT_PAGE_CONTENT);
+        await setDoc(COLLECTIONS.pageContent, 'main', session[COLLECTIONS.pageContent] || DEFAULT_PAGE_CONTENT, token);
         if (currentAdmin && currentAdmin.email) {
-          await db.collection(COLLECTIONS.admins).doc(currentAdmin.email).set(currentAdmin);
+          await setDoc(COLLECTIONS.admins, currentAdmin.email, currentAdmin, token);
         }
         renderAll();
         showToast('All changes saved to website.', 'success');
@@ -2197,9 +2399,5 @@
     });
   </script>
 
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="firebase-config.js?v=1"></script>
 </body>
 </html>
