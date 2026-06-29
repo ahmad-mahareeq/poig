@@ -1261,6 +1261,8 @@ footer p {
 
   .hero-logo {
     width: clamp(180px, 35vw, 280px);
+    height: clamp(180px, 35vw, 280px);
+    object-fit: cover;
   }
 
   .hero-glow {
@@ -1412,18 +1414,22 @@ footer p {
     background: rgba(255, 255, 255, 0.92) !important;
   }
 
-  /* Hide hero glow on mobile (was showing as white box) */
+  /* Hide hero glow on mobile */
   .hero-glow {
     display: none !important;
   }
 
   .hero-visual {
     overflow: hidden;
+    max-width: clamp(180px, 35vw, 280px);
+    max-height: clamp(180px, 35vw, 280px);
   }
 
   .hero-logo {
-    clip-path: inset(8%);
+    transform: scale(1.25);
     filter: none !important;
+    width: 100%;
+    height: 100%;
   }
 
   /* Kill scroll indicator bounce animation */
