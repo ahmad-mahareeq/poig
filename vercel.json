@@ -1,3 +1,17 @@
 {
-  "framework": null
+  "framework": null,
+  "headers": [
+    {
+      "source": "/(.*\\.js|.*\\.css|.*\\.png|.*\\.jpg|.*\\.webp)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    }
+  ]
 }

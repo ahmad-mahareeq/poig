@@ -1373,6 +1373,32 @@ footer p {
   .footer-right {
     align-items: center;
   }
+
+  /* Disable expensive backdrop-filter on mobile — use solid backgrounds instead */
+  .glass-card,
+  nav,
+  .hero-visual,
+  [class*="glass"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+  nav.scrolled {
+    background: rgba(66, 27, 97, 0.82) !important;
+  }
+  nav.scrolled .nav-links {
+    background: rgba(66, 27, 97, 0.95) !important;
+  }
+  .nav-links {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  /* Kill particle animations on mobile — huge CPU savings */
+  .particles span {
+    animation: none;
+  }
 }
 
 @media (max-width: 480px) {
