@@ -280,6 +280,12 @@ async function fetchPageContent(timeoutMs = 8000) {
   }
 }
 
+function toSmall(path) {
+  if (!path) return path;
+  const dot = path.lastIndexOf('.');
+  return path.slice(0, dot) + '-small' + path.slice(dot);
+}
+
 function formatHeroTitle(text) {
   if (!text) return '';
   const words = text.split(' ');
@@ -393,7 +399,7 @@ function teamCardHTML(m) {
   return `
     <div class="glass-card team-card">
       <div class="team-avatar">
-        ${m.photo ? `<img src="${m.photo}" alt="${m.name}" class="team-photo" loading="lazy" onerror="this.style.display='none'">` : ''}
+        ${m.photo ? `<picture><source media="(max-width: 768px)" srcset="${toSmall(m.photo)}"><img src="${m.photo}" alt="${m.name}" class="team-photo" loading="lazy" onerror="this.style.display='none'"></picture>` : ''}
         <div class="avatar-placeholder" style="background: ${color};">${initials}</div>
       </div>
       <h4>${m.name}</h4>
@@ -474,14 +480,14 @@ function renderNews() {
     const mains = n.mainPhotos && n.mainPhotos.length ? n.mainPhotos : (n.mainPhoto ? [n.mainPhoto] : []);
     return `
     <div class="glass-card news-card${i === 0 ? ' active' : ''}">
-      ${mains.length ? `<img src="${mains[0]}" alt="${n.title}" class="news-card-main-photo" loading="lazy" onerror="this.style.display='none'">` : ''}
-      ${mains.length > 1 ? `<div class="news-card-thumbs">${mains.slice(1).map(p => `<img src="${p}" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>` : ''}
+      ${mains.length ? `<img src="${toSmall(mains[0])}" data-full="${mains[0]}" alt="${n.title}" class="news-card-main-photo" loading="lazy" onerror="this.style.display='none'">` : ''}
+      ${mains.length > 1 ? `<div class="news-card-thumbs">${mains.slice(1).map(p => `<img src="${toSmall(p)}" data-full="${p}" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>` : ''}
       <div class="news-card-body">
         <h3>${n.title}</h3>
         <p>${n.description}</p>
         ${n.extraPhotos && n.extraPhotos.length ? `
           <div class="activity-photos" style="margin-top:16px;">
-            ${n.extraPhotos.map(p => `<img src="${p}" class="activity-photo" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}
+            ${n.extraPhotos.map(p => `<img src="${toSmall(p)}" data-full="${p}" class="activity-photo" alt="" loading="lazy" onerror="this.style.display='none'">`).join('')}
           </div>
         ` : ''}
       </div>
@@ -569,7 +575,10 @@ function closePhotoPreview() {
 
 document.addEventListener('click', e => {
   const img = e.target.closest('.activity-photo, .news-card-main-photo, .news-card-thumbs img, .team-photo');
-  if (img && img.tagName === 'IMG' && img.src) openPhotoPreview(img.src);
+  if (img && img.tagName === 'IMG') {
+    const full = img.dataset.full || img.src;
+    openPhotoPreview(full);
+  }
 });
 
 document.addEventListener('keydown', e => {
